@@ -187,6 +187,22 @@ _SAVINGS: dict[str, list[str]] = {
 
 _EXPANSE_SIGNALS = ['beli', 'bayar', 'habis', 'keluar', 'traktir', 'order', 'pesan', 'checkout']
 
+MONTHS_ID: dict[str, int] = {
+    'januari':1,'februari':2,'maret':3,'april':4,'mei':5,'juni':6,
+    'juli':7,'agustus':8,'september':9,'oktober':10,'november':11,'desember':12,
+    'jan':1,'feb':2,'mar':3,'apr':4,'jun':6,'jul':7,
+    'agu':8,'ags':8,'sep':9,'okt':10,'nov':11,'des':12,
+}
+
+DAYS_ID: dict[str, int] = {
+    'senin':0,'selasa':1,'rabu':2,'kamis':3,'jumat':4,'sabtu':5,'minggu':6,
+}
+
+_WORD_NUMS = {
+    'satu':1,'dua':2,'tiga':3,'empat':4,'lima':5,
+    'enam':6,'tujuh':7,'delapan':8,'sembilan':9,'sepuluh':10,
+}
+
 
 def _match(text: str, mapping: dict[str, list[str]]) -> str | None:
     for cat, keywords in mapping.items():
@@ -216,22 +232,97 @@ def detect_type_category(text: str) -> tuple[str | None, str | None]:
     return None, None
 
 
-def parse_transaction_nl(text: str, msg_date: str) -> dict | None:
+def parse_date(text: str, now: datetime) -> str | None:
+    """
+    Ekstrak tanggal dari teks Indonesia.
+    Return 'YYYY-MM-DD' atau None (pakai tanggal saat pesan dikirim).
+    """
+    t = text.lower()
+    today = now.date()
+
+    # "kemarin lusa" = 2 hari lalu (harus dicek sebelum "kemarin")
+    if re.search(r'kemari[en]\s+lusa', t):
+        return (today - timedelta(days=2)).strftime('%Y-%m-%d')
+
+    # "kemarin" / "kemaren"
+    if re.search(r'\bkemari[en]\b', t):
+        return (today - timedelta(days=1)).strftime('%Y-%m-%d')
+
+    # "N hari lalu" / "N hari yang lalu"
+    m = re.search(
+        r'(\d+|satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)'
+        r'\s+hari\s+(?:yang\s+)?lalu', t
+    )
+    if m:
+        raw = m.group(1)
+        n = _WORD_NUMS.get(raw) or int(raw)
+        return (today - timedelta(days=n)).strftime('%Y-%m-%d')
+
+    # "minggu lalu" = 7 hari lalu (dicek sebelum nama hari "minggu")
+    if re.search(r'minggu\s+lalu', t):
+        return (today - timedelta(days=7)).strftime('%Y-%m-%d')
+
+    # "tanggal 24" / "tgl 24" / "tanggal 24 april"
+    _month_pat = '|'.join(MONTHS_ID.keys())
+    m = re.search(
+        rf'(?:tanggal|tgl)\s+(\d{{1,2}})(?:\s+({_month_pat}))?', t
+    )
+    if m:
+        day = int(m.group(1))
+        if m.group(2):
+            month = MONTHS_ID[m.group(2)]
+            year = today.year
+            if datetime(year, month, day).date() > today:
+                year -= 1
+        else:
+            month = today.month
+            year = today.year
+            if day > today.day:  # tanggal belum lewat bulan ini → bulan lalu
+                month -= 1
+                if month == 0:
+                    month, year = 12, year - 1
+        try:
+            return datetime(year, month, day).strftime('%Y-%m-%d')
+        except ValueError:
+            pass
+
+    # "24 april" / "24 mei" dll.
+    m = re.search(rf'\b(\d{{1,2}})\s+({_month_pat})\b', t)
+    if m:
+        day, month = int(m.group(1)), MONTHS_ID[m.group(2)]
+        year = today.year
+        try:
+            if datetime(year, month, day).date() > today:
+                year -= 1
+            return datetime(year, month, day).strftime('%Y-%m-%d')
+        except ValueError:
+            pass
+
+    # Nama hari → occurrence terakhir (termasuk hari ini)
+    for day_name, weekday in DAYS_ID.items():
+        if re.search(rf'\b{day_name}\b', t):
+            days_back = (today.weekday() - weekday) % 7
+            return (today - timedelta(days=days_back)).strftime('%Y-%m-%d')
+
+    return None  # tidak ada keterangan waktu → pakai tanggal pesan
+
+
+def parse_transaction_nl(text: str, msg_date: str, now: datetime) -> dict | None:
     amount = parse_amount(text)
     if amount is None:
         return None
     trans_type, category = detect_type_category(text)
     if trans_type is None:
-        # Ada nominal tapi tipe tidak dikenal → default Expanse
         trans_type, category = 'Expanse', 'Belanja Bulanan'
     if category is None:
         category = list(_EXPANSE.keys())[0]
+    date = parse_date(text, now) or msg_date
     return {
         'type': trans_type,
         'category': category,
         'amount': amount,
         'description': text.strip(),
-        'date': msg_date,
+        'date': date,
     }
 
 # ── Referensi data ────────────────────────────────────────────────────────────
@@ -328,16 +419,17 @@ async def cmd_status(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def handle_free_text(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    # Tanggal = waktu pesan dikirim, dikonversi ke WIB
-    msg_date = update.message.date.astimezone(WIB).strftime("%Y-%m-%d")
+    now = update.message.date.astimezone(WIB)
+    msg_date = now.strftime("%Y-%m-%d")
 
-    parsed = parse_transaction_nl(text, msg_date)
+    parsed = parse_transaction_nl(text, msg_date, now)
     if parsed is None:
         await update.message.reply_text(
             "🤔 Tidak bisa membaca transaksi.\n\n"
             "Pastikan ada nominal, contoh:\n"
             "• `pagi ini beli sarapan 15ribu`\n"
-            "• `bayar bensin 50rb`\n"
+            "• `kemarin bayar bensin 50rb`\n"
+            "• `tanggal 24 beli makan 30rb`\n"
             "• `gajian 5jt`\n\n"
             "Atau gunakan /tambah untuk input terpandu.",
             parse_mode="Markdown",
@@ -349,11 +441,12 @@ async def handle_free_text(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
     _, pending = db_count()
 
     date_display = datetime.strptime(parsed['date'], "%Y-%m-%d").strftime("%d/%m/%Y")
+    date_note = " _(disesuaikan)_" if parsed['date'] != msg_date else ""
     await update.message.reply_text(
         f"✅ *Tersimpan!*\n\n"
         f"{COLOR_EMOJI[parsed['type']]} *{parsed['type']}* — {parsed['category']}\n"
         f"💵 {format_rupiah(parsed['amount'])}\n"
-        f"📅 {date_display}\n\n"
+        f"📅 {date_display}{date_note}\n\n"
         f"⏳ {pending} transaksi menunggu sync ke Excel.\n"
         f"_Salah? Ketik /batal_",
         parse_mode="Markdown",
