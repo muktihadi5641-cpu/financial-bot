@@ -52,19 +52,26 @@ def db_init():
             type        TEXT    NOT NULL,
             category    TEXT    NOT NULL,
             amount      REAL    NOT NULL,
+            currency    TEXT    NOT NULL DEFAULT 'IDR',
             description TEXT    NOT NULL,
             synced      INTEGER NOT NULL DEFAULT 0
         )
     """)
+    # Migration: tambah kolom currency jika DB lama belum punya
+    try:
+        con.execute("ALTER TABLE transactions ADD COLUMN currency TEXT NOT NULL DEFAULT 'IDR'")
+        log.info("DB migration: kolom currency ditambahkan")
+    except Exception:
+        pass  # kolom sudah ada
     con.commit()
     con.close()
     log.info("Database ready: %s", DB_PATH)
 
-def db_insert(date, trans_type, category, amount, description):
+def db_insert(date, trans_type, category, amount, currency, description):
     con = db_connect()
     con.execute(
-        "INSERT INTO transactions (created_at,date,type,category,amount,description) VALUES (?,?,?,?,?,?)",
-        (datetime.now().isoformat(), date, trans_type, category, amount, description),
+        "INSERT INTO transactions (created_at,date,type,category,amount,currency,description) VALUES (?,?,?,?,?,?,?)",
+        (datetime.now().isoformat(), date, trans_type, category, amount, currency, description),
     )
     con.commit()
     con.close()
@@ -72,7 +79,7 @@ def db_insert(date, trans_type, category, amount, description):
 def db_get_pending():
     con = db_connect()
     rows = con.execute(
-        "SELECT id,date,type,category,amount,description FROM transactions WHERE synced=0 ORDER BY id"
+        "SELECT id,date,type,category,amount,currency,description FROM transactions WHERE synced=0 ORDER BY id"
     ).fetchall()
     con.close()
     return rows
@@ -109,29 +116,53 @@ def db_delete_last():
 
 # ── NLP Parser ────────────────────────────────────────────────────────────────
 
-def parse_amount(text: str) -> float | None:
-    """Parse nominal uang dari teks Indonesia: '15ribu', '50rb', '1.5jt', '300.000', '50000'."""
-    t = text.lower().replace('rp', '').replace('idr', '').strip()
+def parse_amount(text: str) -> tuple[float, str] | None:
+    """Return (amount, currency) atau None. Currency: 'NTD' atau 'IDR'.
+    NTD: '100nt', '500ntd', 'NT$1,500', 'nt 200'
+    IDR: '15ribu', '50rb', '1.5jt', '300.000', '50000'
+    """
+    t = text.lower().strip()
+
+    # ── NTD detection (cek duluan sebelum IDR) ────────────────────────────────
+    # "100nt", "500ntd", "1,500nt"
+    m = re.search(r'(\d[\d,.]*)\s*(?:ntd|nt)\b', t)
+    if not m:
+        # "NT$100", "NT 100", "nt100"
+        m = re.search(r'\bnt\$?\s*(\d[\d,.]*)', t)
+    if m:
+        raw = m.group(1)
+        # pola ribuan Indonesia: 1.500 atau 1.500.000
+        if re.match(r'\d{1,3}(?:\.\d{3})+$', raw):
+            raw = raw.replace('.', '')
+        else:
+            raw = raw.replace(',', '')
+        try:
+            return float(raw), 'NTD'
+        except ValueError:
+            pass
+
+    # ── IDR detection ─────────────────────────────────────────────────────────
+    t = t.replace('rp', '').replace('idr', '').strip()
 
     # ribu / rb / k  → ×1.000
     m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:ribu|rbu|rb|k)(?:\b|$)', t)
     if m:
-        return float(m.group(1).replace(',', '.')) * 1_000
+        return float(m.group(1).replace(',', '.')) * 1_000, 'IDR'
 
     # juta / jt → ×1.000.000
     m = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:juta|jt)(?:\b|$)', t)
     if m:
-        return float(m.group(1).replace(',', '.')) * 1_000_000
+        return float(m.group(1).replace(',', '.')) * 1_000_000, 'IDR'
 
     # angka dengan titik sebagai pemisah ribuan: 15.000 / 1.500.000
     m = re.search(r'\b(\d{1,3}(?:\.\d{3})+)\b', t)
     if m:
-        return float(m.group(1).replace('.', ''))
+        return float(m.group(1).replace('.', '')), 'IDR'
 
     # angka polos ≥ 4 digit
     m = re.search(r'\b(\d{4,})\b', t)
     if m:
-        return float(m.group(1))
+        return float(m.group(1)), 'IDR'
 
     return None
 
@@ -308,9 +339,10 @@ def parse_date(text: str, now: datetime) -> str | None:
 
 
 def parse_transaction_nl(text: str, msg_date: str, now: datetime) -> dict | None:
-    amount = parse_amount(text)
-    if amount is None:
+    result = parse_amount(text)
+    if result is None:
         return None
+    amount, currency = result
     trans_type, category = detect_type_category(text)
     if trans_type is None:
         trans_type, category = 'Expanse', 'Belanja Bulanan'
@@ -321,6 +353,7 @@ def parse_transaction_nl(text: str, msg_date: str, now: datetime) -> dict | None
         'type': trans_type,
         'category': category,
         'amount': amount,
+        'currency': currency,
         'description': text.strip(),
         'date': date,
     }
@@ -372,6 +405,12 @@ def resolve_category(raw: str, trans_type: str) -> str | None:
 def format_rupiah(v: float) -> str:
     return f"Rp {v:,.0f}".replace(",", ".")
 
+def format_ntd(v: float) -> str:
+    return f"NT${v:,.0f}"
+
+def format_amount(v: float, currency: str) -> str:
+    return format_ntd(v) if currency == 'NTD' else format_rupiah(v)
+
 # ── Guard ─────────────────────────────────────────────────────────────────────
 
 def owner_only(func):
@@ -396,12 +435,18 @@ async def cmd_help(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
         "`nabung dana darurat 500000`\n"
         "`beli saham BBCA 1.5jt`\n"
         "`bayar listrik 300.000`\n\n"
+        "*Transaksi NTD (New Taiwan Dollar):*\n"
+        "`beli boba 45nt`\n"
+        "`bayar sewa 8000ntd`\n"
+        "`makan siang 120nt`\n"
+        "`NT$1,500 belanja supermarket`\n\n"
         "*Perintah:*\n"
         "/batal — hapus transaksi terakhir\n"
         "/status — ringkasan transaksi\n"
         "/tambah — input step-by-step\n"
         "/help — tampilkan bantuan ini\n\n"
-        "💡 Tanggal otomatis sesuai hari kamu kirim pesan.",
+        "💡 Tanggal otomatis sesuai hari kamu kirim pesan.\n"
+        "💡 NTD & IDR tersimpan terpisah di Excel.",
         parse_mode="Markdown",
     )
 
@@ -436,8 +481,9 @@ async def handle_free_text(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    currency = parsed.get('currency', 'IDR')
     db_insert(parsed['date'], parsed['type'], parsed['category'],
-              parsed['amount'], parsed['description'])
+              parsed['amount'], currency, parsed['description'])
     _, pending = db_count()
 
     date_display = datetime.strptime(parsed['date'], "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -445,7 +491,7 @@ async def handle_free_text(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"✅ *Tersimpan!*\n\n"
         f"{COLOR_EMOJI[parsed['type']]} *{parsed['type']}* — {parsed['category']}\n"
-        f"💵 {format_rupiah(parsed['amount'])}\n"
+        f"💵 {format_amount(parsed['amount'], currency)}\n"
         f"📅 {date_display}{date_note}\n\n"
         f"⏳ {pending} transaksi menunggu sync ke Excel.\n"
         f"_Salah? Ketik /batal_",
@@ -496,11 +542,16 @@ async def ask_cat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ASK_AMOUNT
 
 async def ask_amount(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    amount = parse_amount(update.message.text.strip())
-    if amount is None:
-        await update.message.reply_text("Masukkan angka, contoh: `50000` atau `50rb`", parse_mode="Markdown")
+    result = parse_amount(update.message.text.strip())
+    if result is None:
+        await update.message.reply_text(
+            "Masukkan angka, contoh: `50000`, `50rb`, atau `200nt` untuk NTD",
+            parse_mode="Markdown",
+        )
         return ASK_AMOUNT
+    amount, currency = result
     ctx.user_data["amount"] = amount
+    ctx.user_data["currency"] = currency
     await update.message.reply_text("Keterangan (atau `-` untuk skip):")
     return ASK_DESC
 
@@ -508,12 +559,13 @@ async def ask_desc(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     d = ctx.user_data
     d["description"] = update.message.text.strip()
     today = datetime.now(WIB).strftime("%Y-%m-%d")
-    db_insert(today, d["type"], d["category"], d["amount"], d["description"])
+    currency = d.get("currency", "IDR")
+    db_insert(today, d["type"], d["category"], d["amount"], currency, d["description"])
     _, pending = db_count()
     await update.message.reply_text(
         f"✅ *Tersimpan!*\n\n"
         f"{COLOR_EMOJI[d['type']]} *{d['type']}* — {d['category']}\n"
-        f"💵 {format_rupiah(d['amount'])}\n\n"
+        f"💵 {format_amount(d['amount'], currency)}\n\n"
         f"⏳ {pending} transaksi menunggu sync ke Excel.",
         parse_mode="Markdown",
     )
@@ -550,7 +602,7 @@ class SyncHandler(BaseHTTPRequestHandler):
             rows = db_get_pending()
             self.send_json(200, [
                 {"id": r[0], "date": r[1], "type": r[2],
-                 "category": r[3], "amount": r[4], "description": r[5]}
+                 "category": r[3], "amount": r[4], "currency": r[5], "description": r[6]}
                 for r in rows
             ])
             return
