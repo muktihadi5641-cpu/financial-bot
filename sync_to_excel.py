@@ -49,7 +49,7 @@ MONTH_SHEETS = [
 def api_get(path: str) -> list | dict | None:
     url = f"{RAILWAY_URL}{path}?token={SYNC_SECRET}"
     try:
-        with urllib.request.urlopen(url, timeout=15, context=_SSL_CTX) as r:
+        with urllib.request.urlopen(url, timeout=8, context=_SSL_CTX) as r:
             return json.loads(r.read())
     except urllib.error.URLError as e:
         log.error("Tidak bisa terhubung ke bot cloud: %s", e)
@@ -62,7 +62,7 @@ def api_post(path: str, data: dict) -> dict | None:
                                   headers={"Content-Type": "application/json"},
                                   method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=15, context=_SSL_CTX) as r:
+        with urllib.request.urlopen(req, timeout=8, context=_SSL_CTX) as r:
             return json.loads(r.read())
     except urllib.error.URLError as e:
         log.error("Gagal POST ke bot cloud: %s", e)
