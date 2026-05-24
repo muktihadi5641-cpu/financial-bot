@@ -1,0 +1,7 @@
+.env
+*.xlsx
+*.xls
+sync.log
+__pycache__/
+*.pyc
+transactions.db
