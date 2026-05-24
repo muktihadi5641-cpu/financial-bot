@@ -116,7 +116,7 @@ def write_transactions(transactions: list[dict]) -> tuple[int, list[int]]:
             log.warning("Sheet '%s' penuh — skip", sheet_name)
             continue
 
-        # IDR → kolom I (9), NTD → kolom U (21)
+        # IDR → kolom I (9), NTD → kolom U (21, dipakai SUMIF NTD)
         col_amount = 9 if currency == "IDR" else 21
 
         ws.cell(row=row, column=2,          value=date_obj)
@@ -125,6 +125,11 @@ def write_transactions(transactions: list[dict]) -> tuple[int, list[int]]:
         ws.cell(row=row, column=col_amount, value=amount)
         ws.cell(row=row, column=11,         value=description)
         ws.cell(row=row, column=2).number_format = "DD/MM/YYYY"
+
+        # NTD: tulis formula display di col I agar tampil "NT$ X" bukan "Rp -"
+        # SUMIF IDR tetap aman karena TEXT() menghasilkan string (diabaikan SUMIF numerik)
+        if currency == "NTD":
+            ws.cell(row=row, column=9).value = f'=IF(U{row}>0,TEXT(U{row},"NT$ #,##0"),$E$8)'
 
         curr_label = "NT$" if currency == "NTD" else "Rp"
         log.info("✓ [%s] %s | %s | %s %.0f | %s (baris %d)",
