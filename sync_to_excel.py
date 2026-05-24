@@ -126,10 +126,11 @@ def write_transactions(transactions: list[dict]) -> tuple[int, list[int]]:
         ws.cell(row=row, column=11,         value=description)
         ws.cell(row=row, column=2).number_format = "DD/MM/YYYY"
 
-        # NTD: tulis formula display di col I agar tampil "NT$ X" bukan "Rp -"
-        # SUMIF IDR tetap aman karena TEXT() menghasilkan string (diabaikan SUMIF numerik)
+        # NTD: terapkan format NT$ pada sel col U yang baru ditulis
         if currency == "NTD":
-            ws.cell(row=row, column=9).value = f'=IF(U{row}>0,TEXT(U{row},"NT$ #,##0"),$E$8)'
+            ws.cell(row=row, column=21).number_format = (
+                '_-"NT$ "* #,##0.00_-;\\-"NT$ "* #,##0.00_-;_-"NT$ "* "-"??_-;_-@_-'
+            )
 
         curr_label = "NT$" if currency == "NTD" else "Rp"
         log.info("✓ [%s] %s | %s | %s %.0f | %s (baris %d)",

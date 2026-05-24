@@ -72,15 +72,24 @@ for month in MONTHS:
     ws["M6"] = '=SUMIF($C$10:$C$1000,"Invest",$U$10:$U$1000)'
     ws["Q6"] = '=SUMIF($C$10:$C$1000,"Savings",$U$10:$U$1000)'
 
-    # Migrasi data NTD yang sudah ada: update formula display di col I
-    # agar baris NTD tampil "NT$ X" bukan "Rp -"
-    for r in range(10, 1001):
-        u_val = ws.cell(row=r, column=21).value
-        if u_val and not isinstance(u_val, str) and float(u_val) > 0:
-            ws.cell(row=r, column=9).value = f'=IF(U{r}>0,TEXT(U{r},"NT$ #,##0"),$E$8)'
+    # Revert formula TEXT di col I yang error → kembalikan ke =$E$8
+    # (col I hanya untuk IDR, NTD tampil lewat col U yang punya format NT$)
+    for r in range(11, 1001):
+        cell_i = ws.cell(row=r, column=9)
+        val = str(cell_i.value or '')
+        if val.startswith('=IF(U') and 'TEXT' in val:
+            cell_i.value = '=$E$8'
 
-    # Label kolom backing NTD di row 9, col U (backing column untuk SUMIF)
-    ws.cell(row=9, column=21).value = "NTD_DATA"
+    # Hapus label "NTD_DATA" yang salah posisi di row 9 (area banner)
+    ws.cell(row=9, column=21).value = None
+
+    # Header AMOUNT NT$ di row 10 (baris judul tabel sebenarnya)
+    ws.cell(row=10, column=21).value = "AMOUNT NT$"
+
+    # Terapkan format NT$ ke seluruh 1000 baris kolom U
+    NTD_FMT = '_-"NT$ "* #,##0.00_-;\\-"NT$ "* #,##0.00_-;_-"NT$ "* "-"??_-;_-@_-'
+    for r in range(11, 1001):
+        ws.cell(row=r, column=21).number_format = NTD_FMT
 
     # 3. Re-apply data validations (openpyxl drop cross-sheet ref saat load)
     ws.data_validations.dataValidation = []
