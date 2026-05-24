@@ -361,18 +361,20 @@ def start_http_server():
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    if not BOT_TOKEN or "isi_token" in BOT_TOKEN:
-        print("ERROR: Set TELEGRAM_BOT_TOKEN di environment variable.")
-        return
-    if ALLOWED_UID == 0:
-        print("ERROR: Set ALLOWED_USER_ID di environment variable.")
-        return
-
     db_init()
 
-    # Jalankan HTTP server di thread terpisah
+    # HTTP server selalu jalan duluan (Railway health check perlu ini)
     t = threading.Thread(target=start_http_server, daemon=True)
     t.start()
+
+    if not BOT_TOKEN or "isi_token" in BOT_TOKEN:
+        log.error("TELEGRAM_BOT_TOKEN belum diset. HTTP server tetap jalan.")
+        threading.Event().wait()  # block selamanya agar proses tidak exit
+        return
+    if ALLOWED_UID == 0:
+        log.error("ALLOWED_USER_ID belum diset. HTTP server tetap jalan.")
+        threading.Event().wait()
+        return
 
     app = Application.builder().token(BOT_TOKEN).build()
 
