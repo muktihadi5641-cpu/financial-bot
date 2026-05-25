@@ -9,8 +9,7 @@ import re
 import json
 import logging
 import threading
-import psycopg2
-import psycopg2.extras
+import sqlite3
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
@@ -28,7 +27,7 @@ BOT_TOKEN    = os.getenv("TELEGRAM_BOT_TOKEN", "")
 ALLOWED_UID  = int(os.getenv("ALLOWED_USER_ID", "0"))
 SYNC_SECRET  = os.getenv("SYNC_SECRET", "ganti_ini_dengan_string_acak")
 PORT         = int(os.getenv("PORT", 8080))
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "transactions.db")
 
 WIB = timezone(timedelta(hours=8))
 
@@ -41,98 +40,83 @@ log = logging.getLogger(__name__)
 # ── Database ──────────────────────────────────────────────────────────────────
 
 def db_connect():
-    return psycopg2.connect(DATABASE_URL)
+    con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row
+    return con
 
 def db_init():
     con = db_connect()
-    cur = con.cursor()
-    cur.execute("""
+    con.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
-            id          SERIAL PRIMARY KEY,
-            created_at  TEXT   NOT NULL,
-            date        TEXT   NOT NULL,
-            type        TEXT   NOT NULL,
-            category    TEXT   NOT NULL,
-            amount      REAL   NOT NULL,
-            currency    TEXT   NOT NULL DEFAULT 'IDR',
-            description TEXT   NOT NULL,
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at  TEXT    NOT NULL,
+            date        TEXT    NOT NULL,
+            type        TEXT    NOT NULL,
+            category    TEXT    NOT NULL,
+            amount      REAL    NOT NULL,
+            currency    TEXT    NOT NULL DEFAULT 'IDR',
+            description TEXT    NOT NULL,
             synced      INTEGER NOT NULL DEFAULT 0
         )
     """)
     con.commit()
-    cur.close()
     con.close()
-    log.info("Database ready (PostgreSQL)")
+    log.info("Database ready (SQLite: %s)", DB_PATH)
 
 def db_insert(date, trans_type, category, amount, currency, description):
     con = db_connect()
-    cur = con.cursor()
-    cur.execute(
-        "INSERT INTO transactions (created_at,date,type,category,amount,currency,description) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+    con.execute(
+        "INSERT INTO transactions (created_at,date,type,category,amount,currency,description) VALUES (?,?,?,?,?,?,?)",
         (datetime.now().isoformat(), date, trans_type, category, amount, currency, description),
     )
     con.commit()
-    cur.close()
     con.close()
 
 def db_get_pending():
     con = db_connect()
-    cur = con.cursor()
-    cur.execute(
+    rows = con.execute(
         "SELECT id,date,type,category,amount,currency,description FROM transactions WHERE synced=0 ORDER BY id"
-    )
-    rows = cur.fetchall()
-    cur.close()
+    ).fetchall()
     con.close()
-    return rows
+    return [tuple(r) for r in rows]
 
 def db_mark_synced(ids: list[int]):
     if not ids:
         return
     con = db_connect()
-    cur = con.cursor()
-    cur.execute(
-        f"UPDATE transactions SET synced=1 WHERE id IN ({','.join(['%s']*len(ids))})", ids
+    con.execute(
+        f"UPDATE transactions SET synced=1 WHERE id IN ({','.join(['?']*len(ids))})", ids
     )
     con.commit()
-    cur.close()
     con.close()
 
 def db_count():
     con = db_connect()
-    cur = con.cursor()
-    cur.execute(
+    row = con.execute(
         "SELECT COUNT(*), SUM(CASE WHEN synced=0 THEN 1 ELSE 0 END) FROM transactions"
-    )
-    total, pending = cur.fetchone()
-    cur.close()
+    ).fetchone()
     con.close()
-    return total or 0, pending or 0
+    return row[0] or 0, row[1] or 0
 
 def db_get_recent(n=20):
     con = db_connect()
-    cur = con.cursor()
-    cur.execute(
-        "SELECT id,date,type,category,amount,currency,description,synced FROM transactions ORDER BY id DESC LIMIT %s",
+    rows = con.execute(
+        "SELECT id,date,type,category,amount,currency,description,synced FROM transactions ORDER BY id DESC LIMIT ?",
         (n,)
-    )
-    rows = cur.fetchall()
-    cur.close()
+    ).fetchall()
     con.close()
-    return rows
+    return [tuple(r) for r in rows]
 
 def db_delete_last():
     con = db_connect()
-    cur = con.cursor()
-    cur.execute("SELECT id FROM transactions WHERE synced=0 ORDER BY id DESC LIMIT 1")
-    row = cur.fetchone()
+    row = con.execute(
+        "SELECT id FROM transactions WHERE synced=0 ORDER BY id DESC LIMIT 1"
+    ).fetchone()
     if row:
-        cur.execute("DELETE FROM transactions WHERE id=%s", (row[0],))
+        con.execute("DELETE FROM transactions WHERE id=?", (row[0],))
         con.commit()
-        cur.close()
         con.close()
         return True
-    cur.close()
     con.close()
     return False
 
