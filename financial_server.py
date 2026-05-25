@@ -119,7 +119,7 @@ def get_data_cached():
 
 @app.route("/")
 def index():
-    html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html")
+    html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
     return send_file(html_path)
 
 
