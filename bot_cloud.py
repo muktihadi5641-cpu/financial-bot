@@ -109,18 +109,62 @@ def db_get_recent(n=20):
     con.close()
     return [tuple(r) for r in rows]
 
-def db_delete_last():
+def db_delete_last() -> dict | None:
+    """Hapus transaksi terakhir (synced atau tidak). Return dict transaksi yg dihapus, atau None."""
     con = db_connect()
     row = con.execute(
-        "SELECT id FROM transactions WHERE synced=0 ORDER BY id DESC LIMIT 1"
+        "SELECT id, date, type, category, amount, currency, description, synced "
+        "FROM transactions ORDER BY id DESC LIMIT 1"
     ).fetchone()
     if row:
-        con.execute("DELETE FROM transactions WHERE id=?", (row[0],))
+        tx = dict(row)
+        con.execute("DELETE FROM transactions WHERE id=?", (row["id"],))
         con.commit()
         con.close()
-        return True
+        return tx
     con.close()
-    return False
+    return None
+
+
+def excel_delete_tx(tx: dict) -> bool:
+    """Hapus baris di Excel yang cocok dengan tx. Return True jika berhasil ditemukan dan dihapus."""
+    import openpyxl
+    excel_path = os.getenv("EXCEL_PATH", r"C:\Claude\Project\Financial\Financial Management.xlsx")
+    if not os.path.exists(excel_path):
+        return False
+    try:
+        date_obj   = datetime.strptime(tx["date"], "%Y-%m-%d").date()
+        sheet_name = MONTH_SHEETS[date_obj.month - 1]
+        wb = openpyxl.load_workbook(excel_path)
+        if sheet_name not in wb.sheetnames:
+            wb.close()
+            return False
+        ws = wb[sheet_name]
+        col_amount = 9 if tx.get("currency", "IDR") == "IDR" else 21
+        for r in range(11, 1001):
+            cell_date = ws.cell(row=r, column=2).value
+            if cell_date is None:
+                break
+            try:
+                d = cell_date.strftime("%Y-%m-%d") if hasattr(cell_date, "strftime") else str(cell_date)
+            except Exception:
+                continue
+            cell_amt = ws.cell(row=r, column=col_amount).value
+            if (d == tx["date"]
+                    and ws.cell(row=r, column=3).value == tx["type"]
+                    and ws.cell(row=r, column=6).value == tx["category"]
+                    and cell_amt is not None
+                    and abs(float(cell_amt) - tx["amount"]) < 0.01):
+                for col in (2, 3, 6, 9, 11, 21):
+                    ws.cell(row=r, column=col).value = None
+                wb.save(excel_path)
+                wb.close()
+                return True
+        wb.close()
+        return False
+    except Exception as e:
+        log.error("excel_delete_tx: %s", e)
+        return False
 
 # ── NLP Parser ────────────────────────────────────────────────────────────────
 
@@ -535,10 +579,24 @@ async def handle_free_text(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
 @owner_only
 async def cmd_batal(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.clear()
-    if db_delete_last():
-        await update.message.reply_text("↩️ Transaksi terakhir dihapus.")
-    else:
+    tx = db_delete_last()
+    if tx is None:
         await update.message.reply_text("Tidak ada transaksi yang bisa dibatalkan.")
+        return ConversationHandler.END
+
+    if tx.get("synced"):
+        removed = excel_delete_tx(tx)
+        if removed:
+            msg = "↩️ Transaksi terakhir dihapus dari database dan Excel."
+        else:
+            msg = (
+                "↩️ Transaksi dihapus dari database.\n"
+                "⚠️ Data sudah masuk Excel — hapus baris tersebut di Excel juga."
+            )
+    else:
+        msg = "↩️ Transaksi terakhir dihapus."
+
+    await update.message.reply_text(msg)
     return ConversationHandler.END
 
 # ── Conversational /tambah ────────────────────────────────────────────────────
