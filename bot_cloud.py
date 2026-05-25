@@ -201,6 +201,7 @@ _INCOME: dict[str, list[str]] = {
     'Bonus': ['bonus', 'thr', 'insentif', 'komisi'],
     'Hasil Bisnis': ['bisnis', 'usaha', 'jualan', 'dagangan', 'omzet', 'dividen'],
     'Cashback': ['cashback', 'refund', 'pengembalian'],
+    'Beasiswa': ['beasiswa', 'scholarship', 'stipend', 'beasiswaku'],
 }
 
 _INVEST: dict[str, list[str]] = {
@@ -394,7 +395,7 @@ VALID_TYPES = {
 }
 
 CATEGORIES = {
-    "Income":  ["Gaji","Bonus","Hasil Bisnis","Cashback"],
+    "Income":  ["Gaji","Bonus","Hasil Bisnis","Cashback","Beasiswa"],
     "Expanse": ["Makan & Minum","Transportasi","Tagihan","Belanja Bulanan",
                 "Internet","iCloud+","Netflix","Claude AI"],
     "Invest":  ["Reksa Dana","Saham","Emas","Deposito"],
@@ -405,7 +406,7 @@ CATEGORY_ALIAS = {
     "makan":"Makan & Minum","transport":"Transportasi","tagihan":"Tagihan",
     "belanja":"Belanja Bulanan","internet":"Internet","icloud":"iCloud+",
     "netflix":"Netflix","claude":"Claude AI","gaji":"Gaji","bonus":"Bonus",
-    "bisnis":"Hasil Bisnis","cashback":"Cashback","reksadana":"Reksa Dana",
+    "bisnis":"Hasil Bisnis","cashback":"Cashback","beasiswa":"Beasiswa","scholarship":"Beasiswa","reksadana":"Reksa Dana",
     "reksa":"Reksa Dana","saham":"Saham","emas":"Emas","deposito":"Deposito",
     "darurat":"Dana Darurat","dana_darurat":"Dana Darurat",
     "liburan":"Tabungan Liburan","tabungan":"Tabungan Barang",

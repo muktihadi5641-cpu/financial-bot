@@ -42,7 +42,7 @@ TYPE_FILLS = {
 CF_RANGE = "B10:U1000"
 
 ALL_CATEGORIES = (
-    "Gaji,Bonus,Hasil Bisnis,Cashback,"
+    "Gaji,Bonus,Hasil Bisnis,Cashback,Beasiswa,"
     "Makan & Minum,Transportasi,Tagihan,Belanja Bulanan,"
     "Internet,iCloud+,Netflix,Claude AI,"
     "Reksa Dana,Saham,Emas,Deposito,"
