@@ -243,9 +243,32 @@ def _match(text: str, mapping: dict[str, list[str]]) -> str | None:
     return None
 
 
+_TYPE_KEYWORDS = {
+    'Income':  r'\b(income|pemasukan|pendapatan)\b',
+    'Savings': r'\b(saving|savings|saving|tabung|menabung|nabung|simpan)\b',
+    'Invest':  r'\b(invest|investasi|investasikan)\b',
+    'Expanse': r'\b(expanse|expense|pengeluaran)\b',
+}
+
+_TYPE_DEFAULTS = {
+    'Income':  ('Income',  'Gaji'),
+    'Savings': ('Savings', 'Tabungan Barang'),
+    'Invest':  ('Invest',  'Reksa Dana'),
+    'Expanse': ('Expanse', 'Belanja Bulanan'),
+}
+
 def detect_type_category(text: str) -> tuple[str | None, str | None]:
     t = text.lower()
-    # Income & invest lebih spesifik → dicek lebih dulu
+
+    # 1. Kata tipe eksplisit (prioritas tertinggi): "income 5jt", "savings 500rb"
+    for tipe, pattern in _TYPE_KEYWORDS.items():
+        if re.search(pattern, t):
+            _maps = {'Income': _INCOME, 'Savings': _SAVINGS,
+                     'Invest': _INVEST, 'Expanse': _EXPANSE}
+            cat = _match(t, _maps[tipe]) or _TYPE_DEFAULTS[tipe][1]
+            return tipe, cat
+
+    # 2. Deteksi dari kata kategori
     cat = _match(t, _INCOME)
     if cat:
         return 'Income', cat
