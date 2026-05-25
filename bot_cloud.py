@@ -439,9 +439,9 @@ def format_amount(v: float, currency: str) -> str:
 
 def owner_only(func):
     async def wrapper(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-        if update.effective_user.id != ALLOWED_UID:
-            await update.message.reply_text("⛔ Akses ditolak.")
-            return ConversationHandler.END
+        uid = update.effective_user.id if update.effective_user else None
+        if uid != ALLOWED_UID:
+            return ConversationHandler.END  # silent drop — no response
         return await func(update, ctx)
     wrapper.__name__ = func.__name__
     return wrapper
@@ -543,6 +543,7 @@ async def cmd_tambah(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
     )
     return ASK_TYPE
 
+@owner_only
 async def ask_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     raw = update.message.text.strip().lower()
     if raw not in VALID_TYPES:
@@ -553,6 +554,7 @@ async def ask_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Kategori:\n`{cats}`", parse_mode="Markdown")
     return ASK_CAT
 
+@owner_only
 async def ask_cat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     cat = resolve_category(update.message.text.strip(), ctx.user_data["type"])
     if cat is None:
@@ -565,6 +567,7 @@ async def ask_cat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Jumlah (contoh: `150000` atau `150rb`):", parse_mode="Markdown")
     return ASK_AMOUNT
 
+@owner_only
 async def ask_amount(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     result = parse_amount(update.message.text.strip())
     if result is None:
@@ -579,6 +582,7 @@ async def ask_amount(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Keterangan (atau `-` untuk skip):")
     return ASK_DESC
 
+@owner_only
 async def ask_desc(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     d = ctx.user_data
     d["description"] = update.message.text.strip()
