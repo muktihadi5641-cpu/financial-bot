@@ -677,6 +677,11 @@ def start_http_server():
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+async def handle_error(update, context):
+    if isinstance(context.error, Exception) and "Conflict" in str(context.error):
+        return  # ditangani oleh retry loop di main()
+    log.error("Bot error: %s", context.error)
+
 def build_app():
     app = Application.builder().token(BOT_TOKEN).build()
     conv = ConversationHandler(
@@ -695,6 +700,7 @@ def build_app():
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("batal",  cmd_batal))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_free_text))
+    app.add_error_handler(handle_error)
     return app
 
 def main():
