@@ -310,8 +310,8 @@ function renderHeader(data) {
   if (m) {
     const portNTD = (m.ntd.income || 0) - (m.ntd.expense || 0) + (m.ntd.invest || 0) + (m.ntd.savings || 0);
     const portIDR = (m.idr.income || 0) - (m.idr.expense || 0) + (m.idr.invest || 0) + (m.idr.savings || 0);
-    document.getElementById("header-port-ntd").textContent = shortNTD(portNTD);
-    document.getElementById("header-port-idr").textContent = shortIDR(portIDR);
+    document.getElementById("header-port-ntd").textContent = fmtNTD(portNTD);
+    document.getElementById("header-port-idr").textContent = fmtIDR(portIDR);
   } else {
     document.getElementById("header-port-ntd").textContent = "NT$ 0";
     document.getElementById("header-port-idr").textContent = "Rp 0";
