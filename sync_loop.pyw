@@ -171,18 +171,19 @@ except Exception:
 
 while True:
     try:
-        do_sync()
+        written = do_sync()
     except Exception:
-        pass
+        written = 0
 
-    try:
-        do_export()
-    except Exception:
-        pass
+    if written:
+        try:
+            do_export()
+        except Exception:
+            pass
 
-    try:
-        push_if_changed()
-    except Exception:
-        pass
+        try:
+            push_if_changed()
+        except Exception:
+            pass
 
     time.sleep(INTERVAL)

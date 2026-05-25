@@ -1,15 +1,16 @@
 """
-Bot Telegram untuk Financial Management — versi CLOUD (Railway.app)
-Berjalan 24/7 di server cloud. Transaksi disimpan ke SQLite.
-Saat PC user nyala, sync_to_excel.py mengambil data ini dan menulis ke Excel.
+Bot Telegram untuk Financial Management — versi CLOUD (Sumopod)
+Berjalan 24/7 di server cloud. Transaksi disimpan ke PostgreSQL.
+Saat PC user nyala, sync_loop.pyw mengambil data ini dan menulis ke Excel.
 """
 
 import os
 import re
 import json
 import logging
-import sqlite3
 import threading
+import psycopg2
+import psycopg2.extras
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
@@ -23,12 +24,11 @@ from telegram.ext import (
 
 load_dotenv()
 
-BOT_TOKEN   = os.getenv("TELEGRAM_BOT_TOKEN", "")
-ALLOWED_UID = int(os.getenv("ALLOWED_USER_ID", "0"))
-SYNC_SECRET = os.getenv("SYNC_SECRET", "ganti_ini_dengan_string_acak")
-PORT        = int(os.getenv("PORT", 8080))
-_default_db = "/data/transactions.db" if os.path.isdir("/data") else "transactions.db"
-DB_PATH     = os.getenv("DB_PATH", _default_db)
+BOT_TOKEN    = os.getenv("TELEGRAM_BOT_TOKEN", "")
+ALLOWED_UID  = int(os.getenv("ALLOWED_USER_ID", "0"))
+SYNC_SECRET  = os.getenv("SYNC_SECRET", "ganti_ini_dengan_string_acak")
+PORT         = int(os.getenv("PORT", 8080))
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 WIB = timezone(timedelta(hours=8))
 
@@ -41,47 +41,48 @@ log = logging.getLogger(__name__)
 # ── Database ──────────────────────────────────────────────────────────────────
 
 def db_connect():
-    return sqlite3.connect(DB_PATH, check_same_thread=False)
+    return psycopg2.connect(DATABASE_URL)
 
 def db_init():
     con = db_connect()
-    con.execute("""
+    cur = con.cursor()
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            created_at  TEXT    NOT NULL,
-            date        TEXT    NOT NULL,
-            type        TEXT    NOT NULL,
-            category    TEXT    NOT NULL,
-            amount      REAL    NOT NULL,
-            currency    TEXT    NOT NULL DEFAULT 'IDR',
-            description TEXT    NOT NULL,
+            id          SERIAL PRIMARY KEY,
+            created_at  TEXT   NOT NULL,
+            date        TEXT   NOT NULL,
+            type        TEXT   NOT NULL,
+            category    TEXT   NOT NULL,
+            amount      REAL   NOT NULL,
+            currency    TEXT   NOT NULL DEFAULT 'IDR',
+            description TEXT   NOT NULL,
             synced      INTEGER NOT NULL DEFAULT 0
         )
     """)
-    # Migration: tambah kolom currency jika DB lama belum punya
-    try:
-        con.execute("ALTER TABLE transactions ADD COLUMN currency TEXT NOT NULL DEFAULT 'IDR'")
-        log.info("DB migration: kolom currency ditambahkan")
-    except Exception:
-        pass  # kolom sudah ada
     con.commit()
+    cur.close()
     con.close()
-    log.info("Database ready: %s", DB_PATH)
+    log.info("Database ready (PostgreSQL)")
 
 def db_insert(date, trans_type, category, amount, currency, description):
     con = db_connect()
-    con.execute(
-        "INSERT INTO transactions (created_at,date,type,category,amount,currency,description) VALUES (?,?,?,?,?,?,?)",
+    cur = con.cursor()
+    cur.execute(
+        "INSERT INTO transactions (created_at,date,type,category,amount,currency,description) VALUES (%s,%s,%s,%s,%s,%s,%s)",
         (datetime.now().isoformat(), date, trans_type, category, amount, currency, description),
     )
     con.commit()
+    cur.close()
     con.close()
 
 def db_get_pending():
     con = db_connect()
-    rows = con.execute(
+    cur = con.cursor()
+    cur.execute(
         "SELECT id,date,type,category,amount,currency,description FROM transactions WHERE synced=0 ORDER BY id"
-    ).fetchall()
+    )
+    rows = cur.fetchall()
+    cur.close()
     con.close()
     return rows
 
@@ -89,37 +90,49 @@ def db_mark_synced(ids: list[int]):
     if not ids:
         return
     con = db_connect()
-    con.execute(f"UPDATE transactions SET synced=1 WHERE id IN ({','.join('?'*len(ids))})", ids)
+    cur = con.cursor()
+    cur.execute(
+        f"UPDATE transactions SET synced=1 WHERE id IN ({','.join(['%s']*len(ids))})", ids
+    )
     con.commit()
+    cur.close()
     con.close()
 
 def db_count():
     con = db_connect()
-    total, pending = con.execute(
+    cur = con.cursor()
+    cur.execute(
         "SELECT COUNT(*), SUM(CASE WHEN synced=0 THEN 1 ELSE 0 END) FROM transactions"
-    ).fetchone()
+    )
+    total, pending = cur.fetchone()
+    cur.close()
     con.close()
     return total or 0, pending or 0
 
 def db_get_recent(n=20):
     con = db_connect()
-    rows = con.execute(
-        "SELECT id,date,type,category,amount,currency,description,synced FROM transactions ORDER BY id DESC LIMIT ?", (n,)
-    ).fetchall()
+    cur = con.cursor()
+    cur.execute(
+        "SELECT id,date,type,category,amount,currency,description,synced FROM transactions ORDER BY id DESC LIMIT %s",
+        (n,)
+    )
+    rows = cur.fetchall()
+    cur.close()
     con.close()
     return rows
 
 def db_delete_last():
-    """Hapus transaksi terakhir yang belum disync (untuk /batal)."""
     con = db_connect()
-    row = con.execute(
-        "SELECT id FROM transactions WHERE synced=0 ORDER BY id DESC LIMIT 1"
-    ).fetchone()
+    cur = con.cursor()
+    cur.execute("SELECT id FROM transactions WHERE synced=0 ORDER BY id DESC LIMIT 1")
+    row = cur.fetchone()
     if row:
-        con.execute("DELETE FROM transactions WHERE id=?", (row[0],))
+        cur.execute("DELETE FROM transactions WHERE id=%s", (row[0],))
         con.commit()
+        cur.close()
         con.close()
         return True
+    cur.close()
     con.close()
     return False
 
