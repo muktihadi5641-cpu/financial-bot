@@ -5,6 +5,8 @@ Saat PC user nyala, sync_loop.pyw mengambil data ini dan menulis ke Excel.
 """
 
 import os
+import truststore
+truststore.inject_into_ssl()
 import re
 import json
 import logging
@@ -675,10 +677,30 @@ def start_http_server():
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def build_app():
+    app = Application.builder().token(BOT_TOKEN).build()
+    conv = ConversationHandler(
+        entry_points=[CommandHandler("tambah", cmd_tambah)],
+        states={
+            ASK_TYPE:   [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_type)],
+            ASK_CAT:    [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_cat)],
+            ASK_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_amount)],
+            ASK_DESC:   [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_desc)],
+        },
+        fallbacks=[CommandHandler("batal", cmd_batal)],
+    )
+    app.add_handler(conv)
+    app.add_handler(CommandHandler("start",  cmd_help))
+    app.add_handler(CommandHandler("help",   cmd_help))
+    app.add_handler(CommandHandler("status", cmd_status))
+    app.add_handler(CommandHandler("batal",  cmd_batal))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_free_text))
+    return app
+
 def main():
+    import time as _time
     db_init()
 
-    # HTTP server selalu jalan duluan (Railway health check)
     t = threading.Thread(target=start_http_server, daemon=True)
     t.start()
 
@@ -691,29 +713,17 @@ def main():
         threading.Event().wait()
         return
 
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    conv = ConversationHandler(
-        entry_points=[CommandHandler("tambah", cmd_tambah)],
-        states={
-            ASK_TYPE:   [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_type)],
-            ASK_CAT:    [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_cat)],
-            ASK_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_amount)],
-            ASK_DESC:   [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_desc)],
-        },
-        fallbacks=[CommandHandler("batal", cmd_batal)],
-    )
-
-    app.add_handler(conv)
-    app.add_handler(CommandHandler("start",  cmd_help))
-    app.add_handler(CommandHandler("help",   cmd_help))
-    app.add_handler(CommandHandler("status", cmd_status))
-    app.add_handler(CommandHandler("batal",  cmd_batal))
-    # Free-text handler: semua pesan non-command diparse sebagai transaksi
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_free_text))
-
-    log.info("Bot aktif — sheet bulan ini: %s", current_sheet())
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    while True:
+        try:
+            log.info("Bot aktif — sheet bulan ini: %s", current_sheet())
+            build_app().run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+            break
+        except Exception as e:
+            if "Conflict" in str(e) or "409" in str(e):
+                log.warning("409 Conflict — sesi lain masih aktif. Retry dalam 35 detik...")
+                _time.sleep(35)
+            else:
+                raise
 
 if __name__ == "__main__":
     main()
