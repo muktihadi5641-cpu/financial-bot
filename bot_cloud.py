@@ -27,7 +27,8 @@ BOT_TOKEN   = os.getenv("TELEGRAM_BOT_TOKEN", "")
 ALLOWED_UID = int(os.getenv("ALLOWED_USER_ID", "0"))
 SYNC_SECRET = os.getenv("SYNC_SECRET", "ganti_ini_dengan_string_acak")
 PORT        = int(os.getenv("PORT", 8080))
-DB_PATH     = os.getenv("DB_PATH", "transactions.db")
+_default_db = "/data/transactions.db" if os.path.isdir("/data") else "transactions.db"
+DB_PATH     = os.getenv("DB_PATH", _default_db)
 
 WIB = timezone(timedelta(hours=8))
 
