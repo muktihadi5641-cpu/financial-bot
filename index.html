@@ -183,9 +183,14 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 <div class="header">
   <div class="header-top">
     <div class="header-logo">Financial Dashboard</div>
-    <div class="sync-badge">
-      <div class="sync-dot" id="sync-dot"></div>
-      <span id="sync-time">Loading…</span>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+      <div class="sync-badge" style="font-size:13px;font-weight:600;letter-spacing:.3px">
+        🇹🇼 <span id="tw-clock">--:--:--</span>
+      </div>
+      <div class="sync-badge">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-time">Loading…</span>
+      </div>
     </div>
   </div>
   <div class="header-month" id="header-month">—</div>
@@ -555,6 +560,16 @@ async function refresh() {
     document.getElementById("sync-dot").className = "sync-dot stale";
   }
 }
+
+// ── Taiwan live clock (Asia/Taipei = UTC+8) ────────────────
+const TW_DATE = new Intl.DateTimeFormat("id-ID", {timeZone:"Asia/Taipei",day:"2-digit",month:"2-digit",year:"numeric"});
+const TW_TIME = new Intl.DateTimeFormat("id-ID", {timeZone:"Asia/Taipei",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+function updateClock() {
+  const now = new Date();
+  document.getElementById("tw-clock").textContent = TW_DATE.format(now) + "  " + TW_TIME.format(now);
+}
+updateClock();
+setInterval(updateClock, 1000);
 
 // Start
 init();
