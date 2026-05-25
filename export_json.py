@@ -82,9 +82,8 @@ def export() -> bool:
     payload = {
         "ok": True,
         "data": {
-            "months":      months_data,
-            "last_sync":   last_sync,
-            "server_time": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            "months":    months_data,
+            "last_sync": last_sync,
         }
     }
 

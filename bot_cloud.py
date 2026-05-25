@@ -100,6 +100,14 @@ def db_count():
     con.close()
     return total or 0, pending or 0
 
+def db_get_recent(n=20):
+    con = db_connect()
+    rows = con.execute(
+        "SELECT id,date,type,category,amount,currency,description,synced FROM transactions ORDER BY id DESC LIMIT ?", (n,)
+    ).fetchall()
+    con.close()
+    return rows
+
 def db_delete_last():
     """Hapus transaksi terakhir yang belum disync (untuk /batal)."""
     con = db_connect()
@@ -633,6 +641,17 @@ class SyncHandler(BaseHTTPRequestHandler):
             self.send_json(200, [
                 {"id": r[0], "date": r[1], "type": r[2],
                  "category": r[3], "amount": r[4], "currency": r[5], "description": r[6]}
+                for r in rows
+            ])
+            return
+        if path == "/recent":
+            if not self.check_auth():
+                self.send_json(401, {"error": "Unauthorized"})
+                return
+            rows = db_get_recent(20)
+            self.send_json(200, [
+                {"id": r[0], "date": r[1], "type": r[2], "category": r[3],
+                 "amount": r[4], "currency": r[5], "description": r[6], "synced": r[7]}
                 for r in rows
             ])
             return
