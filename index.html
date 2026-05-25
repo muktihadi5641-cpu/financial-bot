@@ -50,6 +50,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .sync-dot.stale{background:#FCA5A5}
 .header-month{font-size:14px;color:rgba(255,255,255,0.65);margin-bottom:4px}
 .header-net{font-size:32px;font-weight:700;color:#fff;letter-spacing:-.5px;margin-bottom:2px}
+.header-net-sub{font-size:16px;font-weight:500;color:rgba(255,255,255,0.65);margin-bottom:4px}
 .header-net-label{font-size:12px;color:rgba(255,255,255,0.5)}
 
 /* ── Month tabs ──────────────────────────────────────────── */
@@ -194,8 +195,9 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
     </div>
   </div>
   <div class="header-month" id="header-month">—</div>
-  <div class="header-net" id="header-net">Rp —</div>
-  <div class="header-net-label">Net Balance (IDR)</div>
+  <div class="header-net" id="header-port-ntd">NT$ —</div>
+  <div class="header-net-sub" id="header-port-idr">Rp —</div>
+  <div class="header-net-label">Portfolio Value (Income + Invest + Savings)</div>
 </div>
 
 <!-- MONTH TABS -->
@@ -306,12 +308,13 @@ function renderHeader(data) {
   document.getElementById("header-month").textContent = selectedMonth + " 2026";
 
   if (m) {
-    const net = m.idr.income - m.idr.expense;
-    document.getElementById("header-net").textContent = shortIDR(Math.abs(net));
-    document.getElementById("header-net").style.color = net >= 0 ? "#86EFAC" : "#FCA5A5";
+    const portNTD = (m.ntd.income || 0) + (m.ntd.invest || 0) + (m.ntd.savings || 0);
+    const portIDR = (m.idr.income || 0) + (m.idr.invest || 0) + (m.idr.savings || 0);
+    document.getElementById("header-port-ntd").textContent = shortNTD(portNTD);
+    document.getElementById("header-port-idr").textContent = shortIDR(portIDR);
   } else {
-    document.getElementById("header-net").textContent = "Rp 0";
-    document.getElementById("header-net").style.color = "";
+    document.getElementById("header-port-ntd").textContent = "NT$ 0";
+    document.getElementById("header-port-idr").textContent = "Rp 0";
   }
 }
 
