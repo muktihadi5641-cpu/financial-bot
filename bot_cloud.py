@@ -441,7 +441,9 @@ def owner_only(func):
     async def wrapper(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         uid = update.effective_user.id if update.effective_user else None
         if uid != ALLOWED_UID:
-            return ConversationHandler.END  # silent drop — no response
+            if update.message:
+                await update.message.reply_text("Sorry bung, Ini bot pribadi 🔒")
+            return ConversationHandler.END
         return await func(update, ctx)
     wrapper.__name__ = func.__name__
     return wrapper

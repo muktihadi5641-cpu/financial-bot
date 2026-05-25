@@ -73,7 +73,7 @@ def api_post(path, data):
 
 # ── Excel writer ───────────────────────────────────────────────────────────────
 def find_next_row(ws):
-    for row in range(10, 1001):
+    for row in range(11, 1001):  # row 10 = header, jangan ditimpa
         if ws.cell(row=row, column=2).value is None:
             return row
     return None
