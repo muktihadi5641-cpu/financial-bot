@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Financial Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #F1F5F9;
+  --card:     #FFFFFF;
+  --primary:  #1E3A8A;
+  --primary2: #1D4ED8;
+  --income:   #16A34A;
+  --expense:  #DC2626;
+  --invest:   #D97706;
+  --savings:  #2563EB;
+  --text:     #0F172A;
+  --sub:      #64748B;
+  --border:   #E2E8F0;
+  --radius:   16px;
+  --shadow:   0 2px 12px rgba(0,0,0,0.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--text);min-height:100vh;padding-bottom:32px}
+
+/* ── Header ──────────────────────────────────────────────── */
+.header{
+  background:linear-gradient(145deg,#0F2666,#1D4ED8 60%,#2563EB);
+  padding:28px 20px 40px;
+  position:relative;
+  overflow:hidden;
+}
+.header::after{
+  content:'';position:absolute;right:-60px;top:-60px;
+  width:220px;height:220px;border-radius:50%;
+  background:rgba(255,255,255,0.06);
+}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.header-logo{font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:.5px;text-transform:uppercase}
+.sync-badge{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,0.15);
+  padding:5px 10px;border-radius:20px;
+  font-size:11px;color:rgba(255,255,255,0.85);
+  backdrop-filter:blur(8px);
+}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ADE80}
+.sync-dot.stale{background:#FCA5A5}
+.header-month{font-size:14px;color:rgba(255,255,255,0.65);margin-bottom:4px}
+.header-net{font-size:32px;font-weight:700;color:#fff;letter-spacing:-.5px;margin-bottom:2px}
+.header-net-label{font-size:12px;color:rgba(255,255,255,0.5)}
+
+/* ── Month tabs ──────────────────────────────────────────── */
+.tabs-wrap{
+  background:var(--card);
+  box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  position:sticky;top:0;z-index:10;
+}
+.tabs{
+  display:flex;overflow-x:auto;gap:0;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex-shrink:0;padding:13px 16px;
+  font-size:13px;font-weight:500;color:var(--sub);
+  border-bottom:2.5px solid transparent;
+  cursor:pointer;white-space:nowrap;
+  transition:color .2s,border-color .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--primary2);border-bottom-color:var(--primary2);font-weight:600}
+
+/* ── Main content ────────────────────────────────────────── */
+.content{max-width:900px;margin:0 auto;padding:20px 16px 0}
+
+/* ── Cards grid ──────────────────────────────────────────── */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+.card.income::before{background:var(--income)}
+.card.expense::before{background:var(--expense)}
+.card.invest::before{background:var(--invest)}
+.card.savings::before{background:var(--savings)}
+.card-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.card.income .card-icon{background:#F0FDF4}
+.card.expense .card-icon{background:#FEF2F2}
+.card.invest .card-icon{background:#FFFBEB}
+.card.savings .card-icon{background:#EFF6FF}
+.card-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.card.income .card-label{color:var(--income)}
+.card.expense .card-label{color:var(--expense)}
+.card.invest .card-label{color:var(--invest)}
+.card.savings .card-label{color:var(--savings)}
+.card-idr{font-size:15px;font-weight:700;color:var(--text);line-height:1.2}
+.card-ntd{font-size:12px;color:var(--sub);margin-top:3px}
+.card-zero{color:var(--border) !important}
+
+/* ── Charts section ──────────────────────────────────────── */
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.chart-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.chart-title{font-size:13px;font-weight:600;color:var(--sub);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.chart-wrap{position:relative;max-width:160px;margin:0 auto}
+.chart-center{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;pointer-events:none;
+}
+.chart-center-num{font-size:14px;font-weight:700;color:var(--text);line-height:1}
+.chart-center-lbl{font-size:10px;color:var(--sub);margin-top:2px}
+.chart-legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:12px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--sub)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.legend-val{font-weight:600;color:var(--text);margin-left:auto}
+
+/* ── Transactions ────────────────────────────────────────── */
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.section-title{font-size:15px;font-weight:700;color:var(--text)}
+.tx-count{font-size:12px;color:var(--sub)}
+.filter-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+.filter-tabs::-webkit-scrollbar{display:none}
+.ftab{
+  flex-shrink:0;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;
+  border:1.5px solid var(--border);color:var(--sub);background:var(--card);
+  cursor:pointer;white-space:nowrap;transition:all .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.ftab:hover{border-color:var(--primary2);color:var(--primary2)}
+.ftab.active{background:var(--primary2);border-color:var(--primary2);color:#fff}
+.tx-list{display:flex;flex-direction:column;gap:8px}
+.tx-item{
+  background:var(--card);border-radius:12px;
+  padding:12px 14px;box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:12px;
+  transition:transform .1s;
+}
+.tx-item:active{transform:scale(.98)}
+.tx-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tx-dot.income{background:var(--income)}
+.tx-dot.expense{background:var(--expense)}
+.tx-dot.invest{background:var(--invest)}
+.tx-dot.savings{background:var(--savings)}
+.tx-info{flex:1;min-width:0}
+.tx-desc{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-meta{font-size:11px;color:var(--sub);margin-top:2px}
+.tx-amt{text-align:right;flex-shrink:0}
+.tx-idr{font-size:13px;font-weight:700;color:var(--text)}
+.tx-ntd{font-size:11px;color:var(--sub);margin-top:1px}
+.empty-state{text-align:center;padding:40px 20px;color:var(--sub);font-size:14px}
+.empty-icon{font-size:40px;margin-bottom:8px;display:block}
+
+/* ── Loading / Error ─────────────────────────────────────── */
+.loading{text-align:center;padding:60px 20px}
+.spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--primary2);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-banner{background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px;color:#991B1B;font-size:13px;margin-bottom:16px}
+
+/* ── Net balance bar ─────────────────────────────────────── */
+.net-row{display:flex;gap:10px;margin-bottom:16px}
+.net-card{flex:1;background:var(--card);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);text-align:center}
+.net-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);margin-bottom:4px}
+.net-val{font-size:14px;font-weight:700}
+.net-val.pos{color:var(--income)}
+.net-val.neg{color:var(--expense)}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media(max-width:480px){
+  .charts{grid-template-columns:1fr}
+  .header-net{font-size:28px}
+}
+@media(min-width:640px){
+  .cards{grid-template-columns:repeat(4,1fr)}
+  .card{padding:20px}
+  .card-idr{font-size:17px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="header-logo">Financial Dashboard</div>
+    <div class="sync-badge">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-time">Loading…</span>
+    </div>
+  </div>
+  <div class="header-month" id="header-month">—</div>
+  <div class="header-net" id="header-net">Rp —</div>
+  <div class="header-net-label">Net Balance (IDR)</div>
+</div>
+
+<!-- MONTH TABS -->
+<div class="tabs-wrap">
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<!-- CONTENT -->
+<div class="content" id="content">
+  <div class="loading"><div class="spinner"></div></div>
+</div>
+
+<script>
+const MONTHS = ["January","February","March","April","May","June",
+                "July","August","September","October","November","December"];
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const TYPE_CLASS = {Income:"income",Expanse:"expense",Invest:"invest",Savings:"savings"};
+const TYPE_COLORS = {
+  income:  "#16A34A",
+  expense: "#DC2626",
+  invest:  "#D97706",
+  savings: "#2563EB",
+};
+const TYPE_ICONS = {income:"💰",expense:"💸",invest:"📈",savings:"🏦"};
+const TYPE_LABELS = {income:"Income",expense:"Expense",invest:"Invest",savings:"Savings"};
+
+let allData = null;
+let selectedMonth = MONTHS[new Date().getMonth()];
+let filterType = "all";
+let idrChart = null, ntdChart = null;
+let refreshTimer = null;
+
+// ── Format helpers ─────────────────────────────────────────
+function fmtIDR(n) {
+  if (!n || n === 0) return "Rp 0";
+  return "Rp " + Math.round(n).toLocaleString("id-ID");
+}
+function fmtNTD(n) {
+  if (!n || n === 0) return "NT$ 0";
+  return "NT$ " + Math.round(n).toLocaleString("en-US");
+}
+function shortIDR(n) {
+  if (n >= 1e9) return "Rp " + (n/1e9).toFixed(1) + "B";
+  if (n >= 1e6) return "Rp " + (n/1e6).toFixed(1) + "M";
+  if (n >= 1e3) return "Rp " + (n/1e3).toFixed(0) + "K";
+  return "Rp " + Math.round(n);
+}
+function shortNTD(n) {
+  if (n >= 1e6) return "NT$ " + (n/1e6).toFixed(1) + "M";
+  if (n >= 1e3) return "NT$ " + (n/1e3).toFixed(1) + "K";
+  return "NT$ " + Math.round(n);
+}
+
+// ── Environment detection ──────────────────────────────────
+// GitHub Pages (static) vs local Flask server
+const IS_STATIC = !["localhost","127.0.0.1"].includes(location.hostname)
+               && !location.hostname.match(/^(192\.|10\.|172\.)/);
+const REFRESH_MS = IS_STATIC ? 5 * 60 * 1000 : 30 * 1000; // 5 min online, 30s local
+
+// ── Fetch data ─────────────────────────────────────────────
+async function fetchData() {
+  const url = IS_STATIC
+    ? "data.json?_=" + Date.now()   // cache-bust GitHub Pages CDN
+    : "/api/data";
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "Unknown error");
+    return json.data;
+  } catch(e) {
+    return {error: e.message};
+  }
+}
+
+// ── Build month tabs ───────────────────────────────────────
+function buildTabs(data) {
+  const wrap = document.getElementById("tabs");
+  wrap.innerHTML = "";
+  MONTHS.forEach((m, i) => {
+    const hasData = data.months[m] && data.months[m].tx_count > 0;
+    const el = document.createElement("div");
+    el.className = "tab" + (m === selectedMonth ? " active" : "");
+    el.textContent = MONTH_SHORT[i];
+    el.dataset.month = m;
+    el.onclick = () => selectMonth(m, data);
+    wrap.appendChild(el);
+    if (m === selectedMonth) {
+      setTimeout(() => el.scrollIntoView({block:"nearest",inline:"center"}), 50);
+    }
+  });
+}
+
+function selectMonth(month, data) {
+  selectedMonth = month;
+  filterType = "all";
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.month === month);
+    if (t.dataset.month === month) {
+      t.scrollIntoView({block:"nearest",inline:"center",behavior:"smooth"});
+    }
+  });
+  renderContent(data);
+}
+
+// ── Render header ──────────────────────────────────────────
+function renderHeader(data) {
+  const m = data.months[selectedMonth];
+  document.getElementById("header-month").textContent = selectedMonth + " 2026";
+  document.getElementById("sync-time").textContent = data.last_sync || "—";
+
+  if (m) {
+    const net = m.idr.income - m.idr.expense;
+    document.getElementById("header-net").textContent = shortIDR(Math.abs(net));
+    document.getElementById("header-net").style.color = net >= 0 ? "#86EFAC" : "#FCA5A5";
+    const dot = document.getElementById("sync-dot");
+    dot.className = "sync-dot";
+  } else {
+    document.getElementById("header-net").textContent = "Rp 0";
+    document.getElementById("header-net").style.color = "";
+  }
+}
+
+// ── Render cards ───────────────────────────────────────────
+function cardsHTML(m) {
+  if (!m) return "";
+  const types = ["income","expense","invest","savings"];
+  return types.map(t => {
+    const idr = m.idr[t] || 0;
+    const ntd = m.ntd[t] || 0;
+    return `
+    <div class="card ${t}">
+      <div class="card-icon">${TYPE_ICONS[t]}</div>
+      <div class="card-label">${TYPE_LABELS[t]}</div>
+      <div class="card-idr${idr===0?' card-zero':''}">${fmtIDR(idr)}</div>
+      <div class="card-ntd">${fmtNTD(ntd)}</div>
+    </div>`;
+  }).join("");
+}
+
+// ── Net row ────────────────────────────────────────────────
+function netRowHTML(m) {
+  if (!m) return "";
+  const netIDR = m.idr.income - m.idr.expense;
+  const netNTD = m.ntd.income - m.ntd.expense;
+  const posI = netIDR >= 0, posN = netNTD >= 0;
+  return `
+  <div class="net-row">
+    <div class="net-card">
+      <div class="net-label">Net IDR</div>
+      <div class="net-val ${posI?'pos':'neg'}">${posI?'+':'-'}${shortIDR(Math.abs(netIDR))}</div>
+    </div>
+    <div class="net-card">
+      <div class="net-label">Net NTD</div>
+      <div class="net-val ${posN?'pos':'neg'}">${posN?'+':'-'}${shortNTD(Math.abs(netNTD))}</div>
+    </div>
+    <div class="net-card">
+      <div class="net-label">Transactions</div>
+      <div class="net-val" style="color:var(--primary2)">${m.tx_count}</div>
+    </div>
+  </div>`;
+}
+
+// ── Render charts ──────────────────────────────────────────
+function buildChart(canvasId, data, totFn, label) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
+  const vals = [
+    data.income  || 0,
+    data.expense || 0,
+    data.invest  || 0,
+    data.savings || 0,
+  ];
+  const total = vals.reduce((a,b)=>a+b,0);
+  const colors = [TYPE_COLORS.income, TYPE_COLORS.expense, TYPE_COLORS.invest, TYPE_COLORS.savings];
+  const chart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Income","Expense","Invest","Savings"],
+      datasets: [{
+        data: total > 0 ? vals : [1,1,1,1],
+        backgroundColor: total > 0 ? colors : ["#E2E8F0","#E2E8F0","#E2E8F0","#E2E8F0"],
+        borderWidth: 0,
+        hoverOffset: 6,
+      }],
+    },
+    options: {
+      cutout: "68%",
+      animation: {duration: 600, easing: "easeInOutQuart"},
+      plugins: {
+        legend: {display: false},
+        tooltip: {
+          callbacks: {
+            label(item) {
+              const v = item.raw;
+              const pct = total > 0 ? Math.round(v/total*100) : 0;
+              return ` ${totFn(v)} (${pct}%)`;
+            }
+          }
+        }
+      }
+    },
+    plugins: [{
+      id: "centerText",
+      afterDraw(chart) {
+        const {ctx: c, chartArea: {width, height, left, top}} = chart;
+        const cx = left + width/2, cy = top + height/2;
+        c.save();
+        c.textAlign = "center"; c.textBaseline = "middle";
+        c.font = "bold 13px -apple-system,sans-serif";
+        c.fillStyle = total > 0 ? "#0F172A" : "#CBD5E1";
+        c.fillText(total > 0 ? totFn(total) : "No data", cx, cy - 6);
+        c.font = "10px -apple-system,sans-serif";
+        c.fillStyle = "#64748B";
+        c.fillText(label, cx, cy + 10);
+        c.restore();
+      }
+    }]
+  });
+  return chart;
+}
+
+function chartsHTML(m) {
+  const types = ["income","expense","invest","savings"];
+  const legend = types.map((t,i)=>`
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${TYPE_COLORS[t]}"></div>
+      ${TYPE_LABELS[t]}
+    </div>`).join("");
+  return `
+  <div class="chart-card">
+    <div class="chart-title">IDR Distribution</div>
+    <div class="chart-wrap"><canvas id="chart-idr" height="160"></canvas></div>
+    <div class="chart-legend">${legend}</div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">NTD Distribution</div>
+    <div class="chart-wrap"><canvas id="chart-ntd" height="160"></canvas></div>
+    <div class="chart-legend">${legend}</div>
+  </div>`;
+}
+
+// ── Render transactions ─────────────────────────────────────
+function txListHTML(txs) {
+  if (!txs || txs.length === 0) {
+    return `<div class="empty-state"><span class="empty-icon">📭</span>Belum ada transaksi</div>`;
+  }
+  const filtered = filterType === "all" ? txs : txs.filter(t =>
+    (filterType === "income"  && t.type === "Income")  ||
+    (filterType === "expense" && t.type === "Expanse") ||
+    (filterType === "invest"  && t.type === "Invest")  ||
+    (filterType === "savings" && t.type === "Savings")
+  );
+  if (filtered.length === 0) {
+    return `<div class="empty-state"><span class="empty-icon">🔍</span>Tidak ada transaksi ${TYPE_LABELS[filterType]}</div>`;
+  }
+  return filtered.map(tx => {
+    const cls = TYPE_CLASS[tx.type] || "income";
+    const desc = tx.description || tx.category || "—";
+    const cat  = tx.category ? `${tx.category}` : "—";
+    const showIDR = tx.idr > 0;
+    const showNTD = tx.ntd > 0;
+    return `
+    <div class="tx-item">
+      <div class="tx-dot ${cls}"></div>
+      <div class="tx-info">
+        <div class="tx-desc">${desc}</div>
+        <div class="tx-meta">${tx.date} · ${cat}</div>
+      </div>
+      <div class="tx-amt">
+        <div class="tx-idr">${showIDR ? fmtIDR(tx.idr) : (showNTD ? '' : 'Rp 0')}</div>
+        ${showNTD ? `<div class="tx-ntd">${fmtNTD(tx.ntd)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── Filter tabs ────────────────────────────────────────────
+function filterTabsHTML() {
+  const tabs = [
+    {key:"all",    label:"All"},
+    {key:"income",  label:"💰 Income"},
+    {key:"expense", label:"💸 Expense"},
+    {key:"invest",  label:"📈 Invest"},
+    {key:"savings", label:"🏦 Savings"},
+  ];
+  return tabs.map(t =>
+    `<div class="ftab${filterType===t.key?' active':''}" data-filter="${t.key}">${t.label}</div>`
+  ).join("");
+}
+
+// ── Main render ────────────────────────────────────────────
+function renderContent(data) {
+  if (idrChart) { idrChart.destroy(); idrChart = null; }
+  if (ntdChart) { ntdChart.destroy(); ntdChart = null; }
+
+  renderHeader(data);
+
+  const m = data.months[selectedMonth];
+  const txs = m ? m.transactions : [];
+
+  const html = `
+    ${m ? '' : '<div class="error-banner">Tidak ada data untuk bulan ini.</div>'}
+    <div class="cards">${cardsHTML(m)}</div>
+    ${netRowHTML(m)}
+    <div class="charts">${chartsHTML(m)}</div>
+    <div class="section-header">
+      <div class="section-title">Transactions</div>
+      <div class="tx-count">${txs.length} transaksi</div>
+    </div>
+    <div class="filter-tabs" id="filter-tabs">${filterTabsHTML()}</div>
+    <div class="tx-list" id="tx-list">${txListHTML(txs)}</div>
+  `;
+  document.getElementById("content").innerHTML = html;
+
+  // Bind filter tabs
+  document.querySelectorAll(".ftab").forEach(el => {
+    el.onclick = () => {
+      filterType = el.dataset.filter;
+      document.querySelectorAll(".ftab").forEach(e => e.classList.toggle("active", e.dataset.filter === filterType));
+      document.getElementById("tx-list").innerHTML = txListHTML(txs);
+    };
+  });
+
+  // Build charts after DOM is ready
+  if (m) {
+    setTimeout(() => {
+      idrChart = buildChart("chart-idr", m.idr, shortIDR, "IDR Total");
+      ntdChart = buildChart("chart-ntd", m.ntd, shortNTD, "NTD Total");
+    }, 0);
+  }
+}
+
+// ── Init & auto-refresh ────────────────────────────────────
+async function init() {
+  document.getElementById("content").innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  const data = await fetchData();
+  if (data.error) {
+    document.getElementById("content").innerHTML = `
+      <div class="error-banner">⚠️ Gagal memuat data: ${data.error}</div>
+      <div class="loading"><p style="color:var(--sub);font-size:13px">Retry dalam 15 detik…</p></div>`;
+    document.getElementById("sync-time").textContent = "Error";
+    document.getElementById("sync-dot").className = "sync-dot stale";
+    return;
+  }
+
+  allData = data;
+  document.getElementById("sync-dot").className = "sync-dot";
+  buildTabs(data);
+  renderContent(data);
+}
+
+async function refresh() {
+  const data = await fetchData();
+  if (!data.error) {
+    allData = data;
+    document.getElementById("sync-time").textContent = data.last_sync || "—";
+    document.getElementById("sync-dot").className = "sync-dot";
+    buildTabs(data);
+    renderContent(data);
+  } else {
+    document.getElementById("sync-dot").className = "sync-dot stale";
+  }
+}
+
+// Start
+init();
+setInterval(refresh, REFRESH_MS); // 30s local, 5 min on GitHub Pages
+</script>
+</body>
+</html>
