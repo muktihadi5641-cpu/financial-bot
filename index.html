@@ -183,14 +183,8 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 <div class="header">
   <div class="header-top">
     <div class="header-logo">Financial Dashboard</div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-      <div class="sync-badge" style="font-size:13px;font-weight:600;letter-spacing:.3px">
-        🇹🇼 <span id="tw-clock">--:--:--</span>
-      </div>
-      <div class="sync-badge">
-        <div class="sync-dot" id="sync-dot"></div>
-        <span id="sync-time">Loading…</span>
-      </div>
+    <div class="sync-badge" style="font-size:13px;font-weight:600;letter-spacing:.3px">
+      🇹🇼 <span id="tw-clock">--:--:--</span>
     </div>
   </div>
   <div class="header-month" id="header-month">—</div>
@@ -304,14 +298,11 @@ function selectMonth(month, data) {
 function renderHeader(data) {
   const m = data.months[selectedMonth];
   document.getElementById("header-month").textContent = selectedMonth + " 2026";
-  document.getElementById("sync-time").textContent = data.last_sync || "—";
 
   if (m) {
     const net = m.idr.income - m.idr.expense;
     document.getElementById("header-net").textContent = shortIDR(Math.abs(net));
     document.getElementById("header-net").style.color = net >= 0 ? "#86EFAC" : "#FCA5A5";
-    const dot = document.getElementById("sync-dot");
-    dot.className = "sync-dot";
   } else {
     document.getElementById("header-net").textContent = "Rp 0";
     document.getElementById("header-net").style.color = "";
@@ -537,13 +528,10 @@ async function init() {
     document.getElementById("content").innerHTML = `
       <div class="error-banner">⚠️ Gagal memuat data: ${data.error}</div>
       <div class="loading"><p style="color:var(--sub);font-size:13px">Retry dalam 15 detik…</p></div>`;
-    document.getElementById("sync-time").textContent = "Error";
-    document.getElementById("sync-dot").className = "sync-dot stale";
     return;
   }
 
   allData = data;
-  document.getElementById("sync-dot").className = "sync-dot";
   buildTabs(data);
   renderContent(data);
 }
@@ -552,12 +540,8 @@ async function refresh() {
   const data = await fetchData();
   if (!data.error) {
     allData = data;
-    document.getElementById("sync-time").textContent = data.last_sync || "—";
-    document.getElementById("sync-dot").className = "sync-dot";
     buildTabs(data);
     renderContent(data);
-  } else {
-    document.getElementById("sync-dot").className = "sync-dot stale";
   }
 }
 
