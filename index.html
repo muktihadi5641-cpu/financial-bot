@@ -197,7 +197,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   <div class="header-month" id="header-month">—</div>
   <div class="header-net" id="header-port-ntd">NT$ —</div>
   <div class="header-net-sub" id="header-port-idr">Rp —</div>
-  <div class="header-net-label">Portfolio Value (Income + Invest + Savings)</div>
+  <div class="header-net-label">Net Worth (Income − Expense + Invest + Savings)</div>
 </div>
 
 <!-- MONTH TABS -->
@@ -308,8 +308,8 @@ function renderHeader(data) {
   document.getElementById("header-month").textContent = selectedMonth + " 2026";
 
   if (m) {
-    const portNTD = (m.ntd.income || 0) + (m.ntd.invest || 0) + (m.ntd.savings || 0);
-    const portIDR = (m.idr.income || 0) + (m.idr.invest || 0) + (m.idr.savings || 0);
+    const portNTD = (m.ntd.income || 0) - (m.ntd.expense || 0) + (m.ntd.invest || 0) + (m.ntd.savings || 0);
+    const portIDR = (m.idr.income || 0) - (m.idr.expense || 0) + (m.idr.invest || 0) + (m.idr.savings || 0);
     document.getElementById("header-port-ntd").textContent = shortNTD(portNTD);
     document.getElementById("header-port-idr").textContent = shortIDR(portIDR);
   } else {
