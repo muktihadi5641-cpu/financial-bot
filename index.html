@@ -158,12 +158,17 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .error-banner{background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:16px;color:#991B1B;font-size:13px;margin-bottom:16px}
 
 /* ── Net balance bar ─────────────────────────────────────── */
-.net-row{display:flex;gap:10px;margin-bottom:16px}
-.net-card{flex:1;background:var(--card);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);text-align:center}
-.net-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);margin-bottom:4px}
-.net-val{font-size:14px;font-weight:700}
-.net-val.pos{color:var(--income)}
-.net-val.neg{color:var(--expense)}
+.net-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.net-card{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+.net-card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);margin-bottom:10px}
+.net-line{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.net-line-label{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:4px}
+.net-line-val{font-size:12px;font-weight:600;color:var(--text)}
+.net-divider{border:none;border-top:1px solid var(--border);margin:8px 0}
+.net-total-label{font-size:11px;font-weight:700;color:var(--sub)}
+.net-total-val{font-size:15px;font-weight:700}
+.net-total-val.pos{color:var(--income)}
+.net-total-val.neg{color:var(--expense)}
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media(max-width:480px){
@@ -332,20 +337,29 @@ function netRowHTML(m) {
   const netIDR = m.idr.income - m.idr.expense;
   const netNTD = m.ntd.income - m.ntd.expense;
   const posI = netIDR >= 0, posN = netNTD >= 0;
+  function card(title, inc, exp, net, pos, fmtInc, fmtExp, fmtNet) {
+    return `
+    <div class="net-card">
+      <div class="net-card-title">${title}</div>
+      <div class="net-line">
+        <span class="net-line-label"><span style="color:var(--income)">↑</span> Income</span>
+        <span class="net-line-val" style="color:var(--income)">${fmtInc(inc)}</span>
+      </div>
+      <div class="net-line">
+        <span class="net-line-label"><span style="color:var(--expense)">↓</span> Expense</span>
+        <span class="net-line-val" style="color:var(--expense)">${fmtExp(exp)}</span>
+      </div>
+      <hr class="net-divider">
+      <div class="net-line">
+        <span class="net-total-label">Net</span>
+        <span class="net-total-val ${pos?'pos':'neg'}">${pos?'+':'-'}${fmtNet(Math.abs(net))}</span>
+      </div>
+    </div>`;
+  }
   return `
   <div class="net-row">
-    <div class="net-card">
-      <div class="net-label">Net IDR</div>
-      <div class="net-val ${posI?'pos':'neg'}">${posI?'+':'-'}${shortIDR(Math.abs(netIDR))}</div>
-    </div>
-    <div class="net-card">
-      <div class="net-label">Net NTD</div>
-      <div class="net-val ${posN?'pos':'neg'}">${posN?'+':'-'}${shortNTD(Math.abs(netNTD))}</div>
-    </div>
-    <div class="net-card">
-      <div class="net-label">Transactions</div>
-      <div class="net-val" style="color:var(--primary2)">${m.tx_count}</div>
-    </div>
+    ${card('IDR Balance', m.idr.income, m.idr.expense, netIDR, posI, fmtIDR, fmtIDR, fmtIDR)}
+    ${card('NTD Balance', m.ntd.income, m.ntd.expense, netNTD, posN, fmtNTD, fmtNTD, fmtNTD)}
   </div>`;
 }
 
