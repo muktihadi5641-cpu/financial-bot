@@ -716,7 +716,7 @@ def main():
     while True:
         try:
             log.info("Bot aktif — sheet bulan ini: %s", current_sheet())
-            build_app().run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+            build_app().run_polling(allowed_updates=Update.ALL_TYPES)
             break
         except Exception as e:
             if "Conflict" in str(e) or "409" in str(e):
