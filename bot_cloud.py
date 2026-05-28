@@ -19,7 +19,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     ConversationHandler, filters, ContextTypes,
@@ -338,11 +338,13 @@ _EXPANSE: dict[str, list[str]] = {
 }
 
 _INCOME: dict[str, list[str]] = {
-    'Gaji': ['gaji', 'salary', 'upah', 'honor', 'gajian'],
-    'Bonus': ['bonus', 'thr', 'insentif', 'komisi'],
-    'Hasil Bisnis': ['bisnis', 'usaha', 'jualan', 'dagangan', 'omzet', 'dividen'],
-    'Cashback': ['cashback', 'refund', 'pengembalian'],
-    'Beasiswa': ['beasiswa', 'scholarship', 'stipend', 'beasiswaku'],
+    'Gaji': ['gaji', 'salary', 'upah', 'honor', 'gajian', 'paycheck', 'payroll'],
+    'Bonus': ['bonus', 'thr', 'insentif', 'komisi', 'gratifikasi', 'reward'],
+    'Hasil Bisnis': ['bisnis', 'usaha', 'jualan', 'dagangan', 'omzet', 'dividen',
+                     'laba', 'untung', 'profit', 'penjualan', 'penghasilan'],
+    'Cashback': ['cashback', 'refund', 'pengembalian', 'reimburse', 'reimbursement',
+                 'kembalian uang', 'balik uang'],
+    'Beasiswa': ['beasiswa', 'scholarship', 'stipend', 'beasiswaku', 'tunjangan'],
 }
 
 _INVEST: dict[str, list[str]] = {
@@ -358,7 +360,18 @@ _SAVINGS: dict[str, list[str]] = {
     'Tabungan Barang': ['nabung', 'menabung', 'tabungan', 'simpan', 'celengan'],
 }
 
-_EXPANSE_SIGNALS = ['beli', 'bayar', 'habis', 'keluar', 'traktir', 'order', 'pesan', 'checkout']
+_EXPANSE_SIGNALS = ['beli', 'bayar', 'habis', 'keluar', 'traktir', 'order', 'pesan',
+                    'checkout', 'bayarin', 'beliin', 'jajan', 'spend', 'spent']
+
+# Sinyal penerimaan uang — hanya aktif jika TIDAK ada expense category yang cocok
+_INCOME_SIGNALS = [
+    'terima', 'diterima', 'menerima', 'nerima',
+    'dapat', 'dapet', 'mendapat', 'mendapatkan',
+    'masuk', 'cair', 'dicairkan', 'pencairan',
+    'kiriman', 'dikirim', 'dapet kiriman',
+    'dikasih', 'dikasi', 'diberi', 'dibayar',
+    'receive', 'received', 'incoming',
+]
 
 MONTHS_ID: dict[str, int] = {
     'januari':1,'februari':2,'maret':3,'april':4,'mei':5,'juni':6,
@@ -410,7 +423,7 @@ def detect_type_category(text: str) -> tuple[str | None, str | None]:
             cat = _match(t, _maps[tipe]) or _TYPE_DEFAULTS[tipe][1]
             return tipe, cat
 
-    # 2. Deteksi dari kata kategori
+    # 2. Deteksi dari kata kategori (urutan: Income → Invest → Savings → Expanse)
     cat = _match(t, _INCOME)
     if cat:
         return 'Income', cat
@@ -423,8 +436,15 @@ def detect_type_category(text: str) -> tuple[str | None, str | None]:
     cat = _match(t, _EXPANSE)
     if cat:
         return 'Expanse', cat
+
+    # 3. Sinyal expense eksplisit (beli/bayar/dll.)
     if any(sig in t for sig in _EXPANSE_SIGNALS):
         return 'Expanse', 'Belanja Bulanan'
+
+    # 4. Sinyal penerimaan (terima/dapat/masuk/cair) — hanya jika tidak ada expense match
+    if any(sig in t for sig in _INCOME_SIGNALS):
+        return 'Income', 'Cashback'
+
     return None, None
 
 
@@ -628,46 +648,113 @@ async def cmd_status(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
     )
 
+_CONFIRM_KB = ReplyKeyboardMarkup(
+    [["✅ Ya, simpan", "❌ Batal"]],
+    one_time_keyboard=True, resize_keyboard=True,
+)
+_CONFIRM_YES = {'ya', 'yes', 'y', 'ok', 'oke', 'okay', 'simpan', 'benar', 'betul',
+                'fix', 'bener', '✅ ya, simpan', 'yep', 'yups', 'acc', 'save'}
+_CONFIRM_NO  = {'tidak', 'no', 'n', 'batal', 'cancel', 'salah', 'ganti', 'ulang',
+                'wrong', '❌ batal', 'nope', 'batalin'}
+
+
+async def _show_confirmation(update: Update, ctx: ContextTypes.DEFAULT_TYPE,
+                              parsed: dict, msg_date: str):
+    """Tampilkan pratinjau transaksi dan minta konfirmasi."""
+    ctx.user_data['pending_tx']   = parsed
+    ctx.user_data['pending_date'] = msg_date
+    currency     = parsed.get('currency', 'IDR')
+    date_display = datetime.strptime(parsed['date'], "%Y-%m-%d").strftime("%d/%m/%Y")
+    date_note    = " _(disesuaikan)_" if parsed['date'] != msg_date else ""
+    await update.message.reply_text(
+        f"📋 *Konfirmasi Transaksi*\n\n"
+        f"{COLOR_EMOJI[parsed['type']]} *{parsed['type']}* — {parsed['category']}\n"
+        f"💵 {format_amount(parsed['amount'], currency)}\n"
+        f"📅 {date_display}{date_note}\n"
+        f"📝 _{parsed['description']}_\n\n"
+        f"Balas *ya* untuk simpan atau *tidak* untuk batal.\n"
+        f"_Salah klasifikasi? Ketik ulang dengan keterangan lebih jelas,\n"
+        f"misal: `income 5jt gajian` atau `expanse 50rb makan`_",
+        reply_markup=_CONFIRM_KB,
+        parse_mode="Markdown",
+    )
+
+
 @owner_only
-async def handle_free_text(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
+async def handle_free_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
-    now = update.message.date.astimezone(WIB)
+    now  = update.message.date.astimezone(WIB)
     msg_date = now.strftime("%Y-%m-%d")
 
+    # ── Ada transaksi menunggu konfirmasi ──────────────────────────────────────
+    if ctx.user_data.get('pending_tx'):
+        tl = text.lower().strip()
+
+        if tl in _CONFIRM_YES:
+            # Simpan
+            tx       = ctx.user_data.pop('pending_tx')
+            ctx.user_data.pop('pending_date', None)
+            currency = tx.get('currency', 'IDR')
+            db_insert(tx['date'], tx['type'], tx['category'],
+                      tx['amount'], currency, tx['description'])
+            threading.Thread(target=immediate_sync, daemon=True).start()
+            _, pending = db_count()
+            date_display = datetime.strptime(tx['date'], "%Y-%m-%d").strftime("%d/%m/%Y")
+            await update.message.reply_text(
+                f"✅ *Tersimpan!*\n\n"
+                f"{COLOR_EMOJI[tx['type']]} *{tx['type']}* — {tx['category']}\n"
+                f"💵 {format_amount(tx['amount'], currency)}\n"
+                f"📅 {date_display}\n\n"
+                f"_Salah? Ketik /batal_",
+                reply_markup=ReplyKeyboardRemove(),
+                parse_mode="Markdown",
+            )
+            return
+
+        if tl in _CONFIRM_NO:
+            # Batalkan
+            ctx.user_data.pop('pending_tx')
+            ctx.user_data.pop('pending_date', None)
+            await update.message.reply_text(
+                "❌ Dibatalkan.",
+                reply_markup=ReplyKeyboardRemove(),
+            )
+            return
+
+        # Bukan ya/tidak → anggap koreksi, parse ulang
+        ctx.user_data.pop('pending_tx')
+        ctx.user_data.pop('pending_date', None)
+
+    # ── Parse transaksi baru ───────────────────────────────────────────────────
     parsed = parse_transaction_nl(text, msg_date, now)
     if parsed is None:
         await update.message.reply_text(
             "🤔 Tidak bisa membaca transaksi.\n\n"
             "Pastikan ada nominal, contoh:\n"
-            "• `pagi ini beli sarapan 15ribu`\n"
+            "• `beli sarapan 15ribu`\n"
             "• `kemarin bayar bensin 50rb`\n"
-            "• `tanggal 24 beli makan 30rb`\n"
-            "• `gajian 5jt`\n\n"
+            "• `gajian 5jt`\n"
+            "• `income 10000nt beasiswa cair`\n\n"
             "Atau gunakan /tambah untuk input terpandu.",
+            reply_markup=ReplyKeyboardRemove(),
             parse_mode="Markdown",
         )
         return
 
-    currency = parsed.get('currency', 'IDR')
-    db_insert(parsed['date'], parsed['type'], parsed['category'],
-              parsed['amount'], currency, parsed['description'])
-    threading.Thread(target=immediate_sync, daemon=True).start()
-    _, pending = db_count()
-
-    date_display = datetime.strptime(parsed['date'], "%Y-%m-%d").strftime("%d/%m/%Y")
-    date_note = " _(disesuaikan)_" if parsed['date'] != msg_date else ""
-    await update.message.reply_text(
-        f"✅ *Tersimpan!*\n\n"
-        f"{COLOR_EMOJI[parsed['type']]} *{parsed['type']}* — {parsed['category']}\n"
-        f"💵 {format_amount(parsed['amount'], currency)}\n"
-        f"📅 {date_display}{date_note}\n\n"
-        f"⏳ {pending} transaksi menunggu sync ke Excel.\n"
-        f"_Salah? Ketik /batal_",
-        parse_mode="Markdown",
-    )
+    await _show_confirmation(update, ctx, parsed, msg_date)
 
 @owner_only
 async def cmd_batal(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    # Kalau ada transaksi yang belum dikonfirmasi, batalkan itu saja
+    if ctx.user_data.get('pending_tx'):
+        ctx.user_data.pop('pending_tx')
+        ctx.user_data.pop('pending_date', None)
+        await update.message.reply_text(
+            "❌ Konfirmasi dibatalkan.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return ConversationHandler.END
+
     ctx.user_data.clear()
     tx = db_delete_last()
     if tx is None:
@@ -686,7 +773,7 @@ async def cmd_batal(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     else:
         msg = "↩️ Transaksi terakhir dihapus."
 
-    await update.message.reply_text(msg)
+    await update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 # ── Conversational /tambah ────────────────────────────────────────────────────
