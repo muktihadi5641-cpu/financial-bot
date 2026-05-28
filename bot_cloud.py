@@ -744,6 +744,29 @@ async def handle_free_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await _show_confirmation(update, ctx, parsed, msg_date)
 
 @owner_only
+async def cmd_link(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
+    """Kirim link dashboard + cara install shortcut di iPhone."""
+    import socket
+    try:
+        local_ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        local_ip = "127.0.0.1"
+    await update.message.reply_text(
+        "📱 *Financial Dashboard — Akses dari iPhone*\n\n"
+        "*Cara 1 — Install langsung (sekali klik):*\n"
+        f"1\\. Buka link ini di Safari iPhone:\n"
+        f"   `http://{local_ip}:{PORT}/install`\n"
+        f"2\\. Tap *Allow* / *Izinkan* → *Install*\n"
+        f"3\\. Icon Financial muncul di home screen\\!\n\n"
+        "_(Harus 1 WiFi yang sama dengan PC)_\n\n"
+        "*Cara 2 — GitHub Pages (bisa dari mana saja):*\n"
+        f"[Buka Dashboard](https://muktihadi5641\\-cpu\\.github\\.io/financial\\-bot/)\n"
+        "Setelah terbuka → Share → *Add to Home Screen*\n\n"
+        "📡 _Dashboard update otomatis setiap sinkronisasi_",
+        parse_mode="MarkdownV2",
+    )
+
+@owner_only
 async def cmd_batal(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     # Kalau ada transaksi yang belum dikonfirmasi, batalkan itu saja
     if ctx.user_data.get('pending_tx'):
@@ -885,6 +908,26 @@ class SyncHandler(BaseHTTPRequestHandler):
         if path == "/api/data":
             self._serve_file(os.path.join(_SCRIPT_DIR, "data.json"), "application/json")
             return
+        if path == "/manifest.json":
+            self._serve_file(os.path.join(_SCRIPT_DIR, "manifest.json"), "application/manifest+json")
+            return
+        if path in ("/apple-touch-icon.png", "/icon-192.png", "/icon-512.png"):
+            self._serve_file(os.path.join(_SCRIPT_DIR, path.lstrip("/")), "image/png")
+            return
+        if path in ("/install", "/install.mobileconfig", "/dashboard.mobileconfig"):
+            fp = os.path.join(_SCRIPT_DIR, "dashboard.mobileconfig")
+            try:
+                with open(fp, "rb") as f:
+                    body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-apple-aspen-config")
+                self.send_header("Content-Disposition", "attachment; filename=dashboard.mobileconfig")
+                self.send_header("Content-Length", len(body))
+                self.end_headers()
+                self.wfile.write(body)
+            except FileNotFoundError:
+                self.send_json(404, {"error": "mobileconfig not found"})
+            return
         if path == "/health":
             self.send_json(200, {"status": "ok"})
             return
@@ -953,6 +996,7 @@ def build_app():
     app.add_handler(CommandHandler("start",  cmd_help))
     app.add_handler(CommandHandler("help",   cmd_help))
     app.add_handler(CommandHandler("status", cmd_status))
+    app.add_handler(CommandHandler("link",   cmd_link))
     app.add_handler(CommandHandler("batal",  cmd_batal))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_free_text))
     app.add_error_handler(handle_error)

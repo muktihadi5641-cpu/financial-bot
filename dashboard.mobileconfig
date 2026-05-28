@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>PayloadType</key>
+			<string>com.apple.webClip.managed</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>PayloadIdentifier</key>
+			<string>com.mukti.financialdashboard.webclip</string>
+			<key>PayloadUUID</key>
+			<string>53372A02-57C5-433B-9D11-F2438D829FAF</string>
+			<key>Label</key>
+			<string>Financial</string>
+			<key>URL</key>
+			<string>https://muktihadi5641-cpu.github.io/financial-bot/</string>
+			<key>IsRemovable</key>
+			<true/>
+			<key>FullScreen</key>
+			<true/>
+			<key>IgnoreManifestScope</key>
+			<false/>
+			<key>Icon</key>
+			<data>iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAEV0lEQVR4nO3dz1HbQBiGcZkhZ6cKUs9eKYBc0gOTHrjYF0qgHqjC7iCTUUZEst6VVmj/fs/vxCQTMWSffLs2Ujh0MR0fnqJeH9ePc7y/hMO+l6OGllrZJw6aaLKSr8ZBFg0nsj0Osmg+kS1xkIWRRO5C/wBlVGrDwoXFQRlVC12+tdsKWRjcYlZNDspozMoFXY6DMpq0ZlkX4qCMhi0uri8Oymief4llHJRhhGehg9/ngB3zcTA2TFHLPRMHZRh0nOtjGgdlmHW86YMzB6RRHIwN447j4cHkgPQZB2MD3TgDJgekf3EwNjAYYrj//DVk4p5f+g/efv8qahHYVkopoxt/XEoc7Cm5uJsaCumjT4LJAYk4IBFHNm5uBynqTEocGbjnl9lXKEWV8ffRBE6juabFW2Ep3OJ9jnRcqe9nKMSRgqtqYAyIIzpX28AYEEdErs6BMeBAGj2L18dvO175+4+fXSrEEbGM112zSN8HcdQxMLL0QRxRjheX91MXWYI+OJCafj3iRxymX4/4EcdGruksesSxhWt0H5kgjjDOwMAYEMdazlIWPeJYxdnYRyaIY4GzNzAGxOHjTA6MAXHMd+AMD4wBcfieLHqzmkWPOCq4CzwX7j6HRByQrMfBnuJhN45anizKyOKBdPb1CE3cMheH8fe1ghiKgzcwQlmJg4GxQftxMDA2uzf1oMDr46m6J4syajaOqE8WXd5PFvpoMI40TxZdDPTRVByJnyy6tN5HO3HwemR3LcTB65FI6o6DLKKqOA72kdiqjIOBkUZlcZBFSjXFwT6SWB1xMDCyqCAOBkYuZcXBk0VFKSgOniwqTSlxcBd4gezefY5FxIHi47i9F5y7w7MrJQ6eLCpQKQfSHtOiKAVNDpSGOCARByTiQAEH0t3vBW/7zm9DkyPGUwIJfqaJcSniiLeK9FF3HAmeLIp6fcs4kEIiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARBwgDoRjckAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4kC+O2D8VxXN9m5+6sskR7ytZvLLNT13ZthLj61l5TZufeheH48PTPldCcziQQiIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQB6e76cda/C7uuH2cmByTigEQckIgD3jg4k2KiT4LJAYk4sBQHOwsGQwxMDkifcTA80I0zYHJAGsXB8DDuOv5GG5MD0jQOhodZ15vvz89MDvow6Dp358b8tkIfpqjl5swBScbB8DDCs9C+yUEfzfMv8cK2Qh8NW1zc5TMHfTRpzbKuOpDSR2NWLugh6KL8H1G1C/p3HvZSlhFStdDlC36fgz4qtWHhwraV/7HF1GLzv+ftcfRIpGRfHPNfjaNHIqXZZfffJ44BleS174lw5zgmaKWLLOrrgz/uhFtBXc66iAAAAABJRU5ErkJggg==</data>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>Financial Dashboard</string>
+	<key>PayloadIdentifier</key>
+	<string>com.mukti.financialdashboard</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadType</key>
+	<string>Configuration Profile</string>
+	<key>PayloadUUID</key>
+	<string>85C3AFF1-6E14-4501-BE89-9DE822377A0D</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>
