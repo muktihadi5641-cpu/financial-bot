@@ -27,7 +27,7 @@ load_dotenv(os.path.join(script_dir, ".env"))
 RAILWAY_URL = os.getenv("RAILWAY_URL", "").rstrip("/")
 SYNC_SECRET = os.getenv("SYNC_SECRET", "")
 EXCEL_PATH  = os.getenv("EXCEL_PATH", r"C:\Claude\Project\Financial\Financial Management.xlsx")
-INTERVAL    = 30  # detik antar sync
+INTERVAL    = 60  # detik antar sync (bot_cloud sudah sync langsung, ini backup)
 
 MONTH_SHEETS = [
     "January","February","March","April","May","June",
@@ -37,18 +37,24 @@ NTD_FMT = '_-"NT$ "* #,##0.00_-;\\-"NT$ "* #,##0.00_-;_-"NT$ "* "-"??_-;_-@_-'
 NO_WIN  = subprocess.CREATE_NO_WINDOW
 _SSL    = ssl._create_unverified_context()
 
-# ── Workbook cache ─────────────────────────────────────────────────────────────
-_wb = None
+# ── Workbook cache (mtime-aware agar tidak stale setelah bot_cloud nulis Excel) ──
+_wb       = None
+_wb_mtime = None
 
 def get_wb():
-    global _wb
-    if _wb is None:
-        _wb = openpyxl.load_workbook(EXCEL_PATH)
+    global _wb, _wb_mtime
+    try:
+        mtime = os.path.getmtime(EXCEL_PATH)
+    except OSError:
+        mtime = None
+    if _wb is None or mtime != _wb_mtime:
+        _wb       = openpyxl.load_workbook(EXCEL_PATH)
+        _wb_mtime = mtime
     return _wb
 
 def invalidate_wb():
-    global _wb
-    _wb = None
+    global _wb, _wb_mtime
+    _wb = _wb_mtime = None
 
 # ── HTTP helpers ───────────────────────────────────────────────────────────────
 def api_get(path):

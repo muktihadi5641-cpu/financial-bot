@@ -12,6 +12,8 @@ import json
 import logging
 import threading
 import sqlite3
+import subprocess
+import openpyxl
 from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
@@ -28,8 +30,13 @@ load_dotenv()
 BOT_TOKEN    = os.getenv("TELEGRAM_BOT_TOKEN", "")
 ALLOWED_UID  = int(os.getenv("ALLOWED_USER_ID", "0"))
 SYNC_SECRET  = os.getenv("SYNC_SECRET", "ganti_ini_dengan_string_acak")
-PORT         = int(os.getenv("PORT", 8080))
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "transactions.db")
+PORT        = int(os.getenv("PORT", 8080))
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH     = os.path.join(_SCRIPT_DIR, "transactions.db")
+EXCEL_PATH  = os.getenv("EXCEL_PATH", r"C:\Claude\Project\Financial\Financial Management.xlsx")
+_NTD_FMT    = '_-"NT$ "* #,##0.00_-;\\-"NT$ "* #,##0.00_-;_-"NT$ "* "-"??_-;_-@_-'
+_NO_WIN     = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+_SYNC_LOCK  = threading.Lock()
 
 WIB = timezone(timedelta(hours=8))
 
@@ -165,6 +172,88 @@ def excel_delete_tx(tx: dict) -> bool:
     except Exception as e:
         log.error("excel_delete_tx: %s", e)
         return False
+
+# ── Immediate sync ────────────────────────────────────────────────────────────
+
+def _find_next_row(ws):
+    for r in range(11, 1001):
+        if ws.cell(row=r, column=2).value is None:
+            return r
+    return None
+
+def _export_and_push():
+    try:
+        from export_json import export
+        export()
+    except Exception as e:
+        log.error("export_json: %s", e)
+        return
+    def run(cmd):
+        try:
+            subprocess.run(cmd, capture_output=True, timeout=45, creationflags=_NO_WIN)
+        except Exception:
+            pass
+    run(["git", "-C", _SCRIPT_DIR, "add", "data.json"])
+    run(["git", "-C", _SCRIPT_DIR, "commit", "-m",
+         f"auto: update data [{datetime.now().strftime('%H:%M')}]"])
+    run(["git", "-C", _SCRIPT_DIR, "push", "origin", "master"])
+    log.info("Sync selesai — data.json pushed")
+
+def immediate_sync():
+    """Tulis pending transactions ke Excel, export JSON, push. Dijalankan di thread terpisah."""
+    if not _SYNC_LOCK.acquire(blocking=False):
+        return  # sync lain sedang berjalan
+    try:
+        pending = db_get_pending()
+        if not pending:
+            return
+        try:
+            wb = openpyxl.load_workbook(EXCEL_PATH)
+        except PermissionError:
+            log.warning("immediate_sync: Excel sedang terbuka, ditunda ke sync_loop")
+            return
+        except Exception as e:
+            log.error("immediate_sync: buka Excel: %s", e)
+            return
+        done_ids = []
+        for tx_id, date_str, tx_type, category, amount, currency, description in pending:
+            try:
+                date_obj   = datetime.strptime(date_str, "%Y-%m-%d").date()
+                sheet_name = MONTH_SHEETS[date_obj.month - 1]
+                if sheet_name not in wb.sheetnames:
+                    continue
+                ws  = wb[sheet_name]
+                row = _find_next_row(ws)
+                if row is None:
+                    continue
+                col = 9 if currency == "IDR" else 21
+                ws.cell(row=row, column=2).value         = date_obj
+                ws.cell(row=row, column=3).value         = tx_type
+                ws.cell(row=row, column=6).value         = category
+                ws.cell(row=row, column=col).value       = float(amount)
+                ws.cell(row=row, column=11).value        = description
+                ws.cell(row=row, column=2).number_format = "DD/MM/YYYY"
+                if currency == "NTD":
+                    ws.cell(row=row, column=21).number_format = _NTD_FMT
+                done_ids.append(tx_id)
+            except Exception as e:
+                log.error("immediate_sync tx %s: %s", tx_id, e)
+        if done_ids:
+            try:
+                wb.save(EXCEL_PATH)
+            except PermissionError:
+                log.warning("immediate_sync: gagal save Excel (sedang terbuka)")
+                wb.close()
+                return
+        wb.close()
+        if done_ids:
+            db_mark_synced(done_ids)
+            log.info("immediate_sync: %d tx → Excel, memulai push...", len(done_ids))
+            threading.Thread(target=_export_and_push, daemon=True).start()
+    except Exception as e:
+        log.error("immediate_sync: %s", e)
+    finally:
+        _SYNC_LOCK.release()
 
 # ── NLP Parser ────────────────────────────────────────────────────────────────
 
@@ -562,6 +651,7 @@ async def handle_free_text(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
     currency = parsed.get('currency', 'IDR')
     db_insert(parsed['date'], parsed['type'], parsed['category'],
               parsed['amount'], currency, parsed['description'])
+    threading.Thread(target=immediate_sync, daemon=True).start()
     _, pending = db_count()
 
     date_display = datetime.strptime(parsed['date'], "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -657,6 +747,7 @@ async def ask_desc(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     today = datetime.now(WIB).strftime("%Y-%m-%d")
     currency = d.get("currency", "IDR")
     db_insert(today, d["type"], d["category"], d["amount"], currency, d["description"])
+    threading.Thread(target=immediate_sync, daemon=True).start()
     _, pending = db_count()
     await update.message.reply_text(
         f"✅ *Tersimpan!*\n\n"
@@ -686,8 +777,27 @@ class SyncHandler(BaseHTTPRequestHandler):
         qs = parse_qs(urlparse(self.path).query)
         return qs.get("token", [""])[0] == SYNC_SECRET
 
+    def _serve_file(self, filepath, content_type):
+        try:
+            with open(filepath, "rb") as f:
+                body = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", len(body))
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(body)
+        except FileNotFoundError:
+            self.send_json(404, {"error": "not found"})
+
     def do_GET(self):
         path = urlparse(self.path).path
+        if path in ("/", "/index.html"):
+            self._serve_file(os.path.join(_SCRIPT_DIR, "index.html"), "text/html; charset=utf-8")
+            return
+        if path == "/api/data":
+            self._serve_file(os.path.join(_SCRIPT_DIR, "data.json"), "application/json")
+            return
         if path == "/health":
             self.send_json(200, {"status": "ok"})
             return

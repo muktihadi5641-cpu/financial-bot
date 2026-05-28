@@ -295,7 +295,7 @@ function shortNTD(n) {
 // GitHub Pages (static) vs local Flask server
 const IS_STATIC = !["localhost","127.0.0.1"].includes(location.hostname)
                && !location.hostname.match(/^(192\.|10\.|172\.)/);
-const REFRESH_MS = IS_STATIC ? 60 * 1000 : 30 * 1000; // 60s online, 30s local
+const REFRESH_MS = IS_STATIC ? 30 * 1000 : 5 * 1000; // 30s online, 5s local (bot sudah sync langsung)
 
 // ── Fetch data ─────────────────────────────────────────────
 async function fetchData() {
