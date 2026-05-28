@@ -751,19 +751,39 @@ async def cmd_link(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
         local_ip = socket.gethostbyname(socket.gethostname())
     except Exception:
         local_ip = "127.0.0.1"
+    install_url = f"http://{local_ip}:{PORT}/install"
+    gh_url = "https://muktihadi5641-cpu.github.io/financial-bot/"
     await update.message.reply_text(
-        "📱 *Financial Dashboard — Akses dari iPhone*\n\n"
-        "*Cara 1 — Install langsung (sekali klik):*\n"
-        f"1\\. Buka link ini di Safari iPhone:\n"
-        f"   `http://{local_ip}:{PORT}/install`\n"
-        f"2\\. Tap *Allow* / *Izinkan* → *Install*\n"
-        f"3\\. Icon Financial muncul di home screen\\!\n\n"
-        "_(Harus 1 WiFi yang sama dengan PC)_\n\n"
-        "*Cara 2 — GitHub Pages (bisa dari mana saja):*\n"
-        f"[Buka Dashboard](https://muktihadi5641\\-cpu\\.github\\.io/financial\\-bot/)\n"
-        "Setelah terbuka → Share → *Add to Home Screen*\n\n"
-        "📡 _Dashboard update otomatis setiap sinkronisasi_",
-        parse_mode="MarkdownV2",
+        "📱 <b>Financial Dashboard — Akses dari iPhone</b>\n\n"
+        "<b>Cara 1 — Install otomatis (di WiFi yang sama):</b>\n"
+        f'1. Buka link ini di <b>Safari</b> iPhone:\n<a href="{install_url}">{install_url}</a>\n'
+        "2. Tap <b>Install</b> → icon Financial muncul di home screen\n\n"
+        "<b>Cara 2 — GitHub Pages (bisa dari mana saja):</b>\n"
+        f'<a href="{gh_url}">Buka Dashboard</a>\n'
+        "Setelah terbuka → Share → <b>Add to Home Screen</b>\n\n"
+        "Atau ketik /ios untuk dapat file shortcut langsung.",
+        parse_mode="HTML",
+    )
+
+@owner_only
+async def cmd_ios(update: Update, _ctx: ContextTypes.DEFAULT_TYPE):
+    """Kirim file mobileconfig langsung via Telegram — user tinggal tap Install."""
+    mc_path = os.path.join(_SCRIPT_DIR, "dashboard.mobileconfig")
+    if not os.path.exists(mc_path):
+        await update.message.reply_text("File mobileconfig tidak ditemukan. Jalankan create_mobileconfig.py dulu.")
+        return
+    await update.message.reply_document(
+        document=open(mc_path, "rb"),
+        filename="Financial-Dashboard.mobileconfig",
+        caption=(
+            "📲 <b>Install shortcut Financial Dashboard</b>\n\n"
+            "1. Tap file di atas\n"
+            "2. Tap <b>More</b> (titik tiga) → <b>Open in Safari</b>\n"
+            "3. Tap <b>Allow</b> → <b>Install</b>\n"
+            "4. Icon Financial muncul di home screen iPhone!\n\n"
+            "<i>Tidak perlu koneksi ke PC — ini shortcut ke GitHub Pages.</i>"
+        ),
+        parse_mode="HTML",
     )
 
 @owner_only
@@ -997,6 +1017,7 @@ def build_app():
     app.add_handler(CommandHandler("help",   cmd_help))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("link",   cmd_link))
+    app.add_handler(CommandHandler("ios",    cmd_ios))
     app.add_handler(CommandHandler("batal",  cmd_batal))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_free_text))
     app.add_error_handler(handle_error)
