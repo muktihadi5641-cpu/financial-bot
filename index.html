@@ -68,20 +68,24 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .header-net-sub{font-size:15px;font-weight:500;color:rgba(255,255,255,0.55);margin-bottom:5px}
 .header-net-label{font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:.2px}
 
-/* ── Header sparkline ─────────────────────────────────── */
-.sparkline-wrap{
-  border-top:1px solid rgba(255,255,255,0.08);
-  padding:10px 20px 14px;
-  position:relative;z-index:1;
-  background:rgba(0,0,0,0.12);
+/* ── Daily chart section ──────────────────────────────── */
+.daily-chart-section{
+  background:linear-gradient(180deg,#0d1f5c 0%,#08122e 100%);
+  padding:10px 16px 6px;
+  border-bottom:1px solid rgba(255,255,255,0.07);
 }
-.sparkline-label{
-  font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);
+.daily-chart-header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:6px;
+}
+.daily-chart-title{
+  font-size:9px;font-weight:700;color:rgba(255,255,255,0.38);
   letter-spacing:.8px;text-transform:uppercase;
-  margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;
 }
-.sparkline-label span{color:rgba(255,255,255,0.6);font-weight:600;font-size:10px;letter-spacing:0}
-#header-sparkline{width:100%;height:32px;display:block}
+.daily-chart-total{
+  font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);
+}
+#daily-expense-chart{width:100%;height:80px;display:block}
 
 /* ── Month tabs ──────────────────────────────────────────── */
 .tabs-wrap{
@@ -237,10 +241,15 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
     <div class="header-net-sub" id="header-port-idr">Rp —</div>
     <div class="header-net-label">Net Worth (Income − Expense + Invest + Savings)</div>
   </div>
-  <div class="sparkline-wrap">
-    <div class="sparkline-label">Pengeluaran Harian (NTD) <span id="sparkline-total"></span></div>
-    <canvas id="header-sparkline" height="32"></canvas>
+</div>
+
+<!-- DAILY EXPENSE CHART -->
+<div class="daily-chart-section">
+  <div class="daily-chart-header">
+    <div class="daily-chart-title">Pengeluaran Harian (NTD)</div>
+    <div class="daily-chart-total" id="daily-chart-total"></div>
   </div>
+  <canvas id="daily-expense-chart" height="80"></canvas>
 </div>
 
 <!-- MONTH TABS -->
@@ -355,24 +364,21 @@ function renderHeader(data) {
     const portIDR = (m.idr.income || 0) - (m.idr.expense || 0) + (m.idr.invest || 0) + (m.idr.savings || 0);
     document.getElementById("header-port-ntd").textContent = fmtNTD(portNTD);
     document.getElementById("header-port-idr").textContent = fmtIDR(portIDR);
-    setTimeout(() => drawSparkline(m.transactions || [], selectedMonth), 0);
   } else {
     document.getElementById("header-port-ntd").textContent = "NT$ 0";
     document.getElementById("header-port-idr").textContent = "Rp 0";
-    setTimeout(() => drawSparkline([], selectedMonth), 0);
   }
 }
 
-// ── Header sparkline ───────────────────────────────────────
-function drawSparkline(txs, month) {
-  const canvas = document.getElementById("header-sparkline");
+// ── Daily expense chart ────────────────────────────────────
+function drawDailyChart(txs, month) {
+  const canvas = document.getElementById("daily-expense-chart");
   if (!canvas) return;
   if (sparklineChart) { sparklineChart.destroy(); sparklineChart = null; }
 
-  const monthIdx = MONTHS.indexOf(month);
+  const monthIdx    = MONTHS.indexOf(month);
   const daysInMonth = new Date(2026, monthIdx + 1, 0).getDate();
-  const nowMonth    = new Date().getMonth();
-  const isThisMonth = monthIdx === nowMonth;
+  const isThisMonth = monthIdx === new Date().getMonth();
   const today       = new Date().getDate();
 
   const daily = Array(daysInMonth).fill(0);
@@ -383,18 +389,18 @@ function drawSparkline(txs, month) {
 
   const maxVal = Math.max(...daily, 1);
   const total  = daily.reduce((a, b) => a + b, 0);
-  const el = document.getElementById("sparkline-total");
-  if (el) el.textContent = total > 0 ? fmtNTD(total) : "";
+  const totEl  = document.getElementById("daily-chart-total");
+  if (totEl) totEl.textContent = total > 0 ? "Total " + fmtNTD(total) : "";
 
-  const ctx2 = canvas.getContext("2d");
-  const grad = ctx2.createLinearGradient(0, 0, 0, 32);
-  grad.addColorStop(0, "rgba(147,197,253,0.85)");
-  grad.addColorStop(1, "rgba(147,197,253,0.25)");
+  const cCtx = canvas.getContext("2d");
+  const grad = cCtx.createLinearGradient(0, 0, 0, 60);
+  grad.addColorStop(0, "rgba(96,165,250,0.9)");
+  grad.addColorStop(1, "rgba(59,130,246,0.3)");
 
   const colors = daily.map((v, i) => {
     if (isThisMonth && i + 1 === today) return "rgba(250,204,21,0.95)";
-    if (v === maxVal && v > 0)          return "rgba(255,255,255,0.9)";
-    return grad;
+    if (v > 0 && v === maxVal)          return "rgba(255,255,255,0.92)";
+    return v > 0 ? grad : "rgba(255,255,255,0.07)";
   });
 
   sparklineChart = new Chart(canvas, {
@@ -406,31 +412,51 @@ function drawSparkline(txs, month) {
         backgroundColor: colors,
         borderRadius: { topLeft: 3, topRight: 3 },
         borderSkipped: "bottom",
-        barPercentage: 0.65,
-        categoryPercentage: 0.9,
+        barPercentage: 0.7,
+        categoryPercentage: 0.85,
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { bottom: 2 } },
       plugins: {
         legend: { display: false },
         tooltip: {
           enabled: true,
           displayColors: false,
-          backgroundColor: "rgba(8,15,46,0.95)",
+          backgroundColor: "rgba(8,15,46,0.96)",
           titleColor: "#93C5FD",
           bodyColor: "#fff",
-          padding: 9,
+          padding: 10,
           cornerRadius: 10,
+          titleFont: { size: 12, weight: "600" },
+          bodyFont: { size: 12 },
           callbacks: {
-            title: ctx => `${month} ${ctx[0].label}`,
-            label: ctx => ctx.raw > 0 ? "Pengeluaran: " + fmtNTD(ctx.raw) : "Tidak ada pengeluaran",
+            title: ctx => {
+              const day = String(ctx[0].label).padStart(2, "0");
+              const mi  = String(monthIdx + 1).padStart(2, "0");
+              return `${day}/${mi}/2026`;
+            },
+            label: ctx => ctx.raw > 0
+              ? "Pengeluaran: " + fmtNTD(ctx.raw)
+              : "Tidak ada pengeluaran",
           }
         }
       },
       scales: {
-        x: { display: false },
+        x: {
+          display: true,
+          ticks: {
+            color: "rgba(255,255,255,0.35)",
+            font: { size: 8 },
+            maxRotation: 0,
+            autoSkip: false,
+            padding: 3,
+          },
+          grid: { display: false },
+          border: { display: false },
+        },
         y: { display: false, beginAtZero: true }
       },
       animation: { duration: 500, easing: "easeOutQuart" }
@@ -649,12 +675,13 @@ function renderContent(data) {
   });
 
   // Build charts after DOM is ready
-  if (m) {
-    setTimeout(() => {
+  setTimeout(() => {
+    drawDailyChart(txs, selectedMonth);
+    if (m) {
       idrChart = buildChart("chart-idr", m.idr, shortIDR, "IDR Total");
       ntdChart = buildChart("chart-ntd", m.ntd, shortNTD, "NTD Total");
-    }, 0);
-  }
+    }
+  }, 0);
 }
 
 // ── Init & auto-refresh ────────────────────────────────────
