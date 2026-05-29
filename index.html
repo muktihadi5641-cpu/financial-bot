@@ -37,8 +37,9 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   background:linear-gradient(160deg,#080f2e 0%,#0f2666 45%,#1a44c2 100%);
   position:relative;
   overflow:hidden;
+  min-height:200px;
 }
-.header-body{padding:22px 20px 12px;position:relative;z-index:1}
+.header-body{padding:22px 20px 20px;position:relative;z-index:2}
 .header::before{
   content:'';position:absolute;right:-80px;top:-80px;
   width:280px;height:280px;border-radius:50%;
@@ -68,12 +69,14 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .header-net-sub{font-size:15px;font-weight:500;color:rgba(255,255,255,0.55);margin-bottom:5px}
 .header-net-label{font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:.2px}
 
-/* ── Header chart (inside header) ────────────────────── */
-.header-chart{
-  padding:0 20px 12px;
-  position:relative;z-index:1;
+/* ── Header chart — background canvas ────────────────── */
+#daily-expense-chart{
+  position:absolute;
+  bottom:0;left:0;
+  width:100%;height:100%;
+  z-index:0;
+  display:block;
 }
-#daily-expense-chart{width:100%;height:62px;display:block}
 
 /* ── Month tabs ──────────────────────────────────────────── */
 .tabs-wrap{
@@ -217,6 +220,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 
 <!-- HEADER -->
 <div class="header">
+  <canvas id="daily-expense-chart"></canvas>
   <div class="header-body">
     <div class="header-top">
       <div class="header-logo">Financial Dashboard</div>
@@ -228,9 +232,6 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
     <div class="header-net" id="header-port-ntd">NT$ —</div>
     <div class="header-net-sub" id="header-port-idr">Rp —</div>
     <div class="header-net-label">Net Worth (Income − Expense + Invest + Savings)</div>
-  </div>
-  <div class="header-chart">
-    <canvas id="daily-expense-chart" height="62"></canvas>
   </div>
 </div>
 
@@ -352,7 +353,7 @@ function renderHeader(data) {
   }
 }
 
-// ── Daily expense chart ────────────────────────────────────
+// ── Daily expense chart (header background) ───────────────
 function drawDailyChart(txs, month) {
   const canvas = document.getElementById("daily-expense-chart");
   if (!canvas) return;
@@ -374,56 +375,39 @@ function drawDailyChart(txs, month) {
     }
   });
 
-  // Hitung range hari yang ada data (first → last transaction day)
-  let startIdx = 0, endIdx = daysInMonth - 1;
-  for (let i = 0; i < daysInMonth; i++) {
-    if (dailyNTD[i] > 0 || dailyIDR[i] > 0) { startIdx = i; break; }
-  }
-  for (let i = daysInMonth - 1; i >= 0; i--) {
-    if (dailyNTD[i] > 0 || dailyIDR[i] > 0) { endIdx = i; break; }
-  }
-  // Bulan berjalan: perpanjang hingga hari ini
-  if (isThisMonth && today - 1 > endIdx) endIdx = today - 1;
-
-  const sliceNTD = dailyNTD.slice(startIdx, endIdx + 1);
-  const sliceIDR = dailyIDR.slice(startIdx, endIdx + 1);
-  const labels   = Array.from({length: endIdx - startIdx + 1}, (_, i) => startIdx + i + 1);
-
-  const maxVal = Math.max(...sliceNTD, ...sliceIDR, 1);
+  const maxVal = Math.max(...dailyNTD, ...dailyIDR, 1);
   const cCtx   = canvas.getContext("2d");
-  const ch     = canvas.offsetHeight || 62;
+  const ch     = canvas.offsetHeight || 200;
 
   const gradNTD = cCtx.createLinearGradient(0, 0, 0, ch);
-  gradNTD.addColorStop(0, "rgba(96,165,250,0.85)");
-  gradNTD.addColorStop(1, "rgba(59,130,246,0.18)");
+  gradNTD.addColorStop(0, "rgba(147,197,253,0.72)");
+  gradNTD.addColorStop(1, "rgba(59,130,246,0.22)");
 
   const gradIDR = cCtx.createLinearGradient(0, 0, 0, ch);
-  gradIDR.addColorStop(0, "rgba(251,146,60,0.95)");
-  gradIDR.addColorStop(1, "rgba(234,88,12,0.35)");
+  gradIDR.addColorStop(0, "rgba(251,146,60,0.85)");
+  gradIDR.addColorStop(1, "rgba(234,88,12,0.28)");
 
-  const colorsNTD = sliceNTD.map((v, i) => {
-    const day = startIdx + i + 1;
-    if (isThisMonth && day === today) return "rgba(250,204,21,0.9)";
-    if (v > 0 && v === maxVal)        return "rgba(255,255,255,0.9)";
-    return v > 0 ? gradNTD : "rgba(255,255,255,0.06)";
+  const colorsNTD = dailyNTD.map((v, i) => {
+    if (isThisMonth && i + 1 === today) return "rgba(250,204,21,0.85)";
+    if (v > 0 && v === maxVal)          return "rgba(255,255,255,0.8)";
+    return v > 0 ? gradNTD : "rgba(0,0,0,0)";
   });
-  const colorsIDR = sliceIDR.map((v, i) => {
-    const day = startIdx + i + 1;
-    if (isThisMonth && day === today) return "rgba(253,224,71,0.9)";
+  const colorsIDR = dailyIDR.map((v, i) => {
+    if (isThisMonth && i + 1 === today) return "rgba(253,224,71,0.85)";
     return v > 0 ? gradIDR : "rgba(0,0,0,0)";
   });
 
   sparklineChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels,
+      labels: Array.from({length: daysInMonth}, (_, i) => i + 1),
       datasets: [
-        { label:"NTD", data:sliceNTD, backgroundColor:colorsNTD,
+        { label:"NTD", data:dailyNTD, backgroundColor:colorsNTD,
           borderRadius:{topLeft:3,topRight:3}, borderSkipped:"bottom",
-          barPercentage:0.75, categoryPercentage:0.88, order:2 },
-        { label:"IDR", data:sliceIDR, backgroundColor:colorsIDR,
+          barPercentage:0.72, categoryPercentage:0.88, order:2 },
+        { label:"IDR", data:dailyIDR, backgroundColor:colorsIDR,
           borderRadius:{topLeft:2,topRight:2}, borderSkipped:"bottom",
-          barPercentage:0.35, categoryPercentage:0.88, order:1 }
+          barPercentage:0.32, categoryPercentage:0.88, order:1 }
       ]
     },
     options: {
@@ -454,11 +438,11 @@ function drawDailyChart(txs, month) {
       scales: {
         x: {
           display:true,
-          ticks:{color:"rgba(255,255,255,0.3)",font:{size:7},maxRotation:0,autoSkip:false,padding:1},
+          ticks:{color:"rgba(255,255,255,0.35)",font:{size:7},maxRotation:0,autoSkip:false,padding:2},
           grid:{display:false},
           border:{display:false},
         },
-        y:{display:false, beginAtZero:true, max:maxVal*1.1}
+        y:{display:false, beginAtZero:true, max:maxVal*1.15}
       },
       animation:{duration:500,easing:"easeOutQuart"}
     }
