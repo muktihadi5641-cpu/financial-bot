@@ -34,31 +34,54 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 
 /* ── Header ──────────────────────────────────────────────── */
 .header{
-  background:linear-gradient(145deg,#0F2666,#1D4ED8 60%,#2563EB);
-  padding:28px 20px 40px;
+  background:linear-gradient(160deg,#080f2e 0%,#0f2666 45%,#1a44c2 100%);
   position:relative;
   overflow:hidden;
 }
-.header::after{
-  content:'';position:absolute;right:-60px;top:-60px;
-  width:220px;height:220px;border-radius:50%;
-  background:rgba(255,255,255,0.06);
+.header::before{
+  content:'';position:absolute;right:-80px;top:-80px;
+  width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(99,138,255,0.18) 0%,transparent 70%);
+  pointer-events:none;
 }
-.header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
-.header-logo{font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:.5px;text-transform:uppercase}
+.header::after{
+  content:'';position:absolute;left:-40px;bottom:-60px;
+  width:180px;height:180px;border-radius:50%;
+  background:radial-gradient(circle,rgba(59,130,246,0.12) 0%,transparent 70%);
+  pointer-events:none;
+}
+.header-body{padding:24px 20px 16px;position:relative;z-index:1}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.header-logo{font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);letter-spacing:1.2px;text-transform:uppercase}
 .sync-badge{
   display:flex;align-items:center;gap:6px;
-  background:rgba(255,255,255,0.15);
-  padding:5px 10px;border-radius:20px;
-  font-size:11px;color:rgba(255,255,255,0.85);
-  backdrop-filter:blur(8px);
+  background:rgba(255,255,255,0.1);
+  padding:5px 11px;border-radius:20px;
+  font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);
+  backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.12);
+  letter-spacing:.3px;
 }
-.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ADE80}
-.sync-dot.stale{background:#FCA5A5}
-.header-month{font-size:14px;color:rgba(255,255,255,0.65);margin-bottom:4px}
-.header-net{font-size:32px;font-weight:700;color:#fff;letter-spacing:-.5px;margin-bottom:2px}
-.header-net-sub{font-size:16px;font-weight:500;color:rgba(255,255,255,0.65);margin-bottom:4px}
-.header-net-label{font-size:12px;color:rgba(255,255,255,0.5)}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#4ADE80;box-shadow:0 0 6px #4ADE80}
+.sync-dot.stale{background:#FCA5A5;box-shadow:0 0 6px #FCA5A5}
+.header-month{font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:3px;font-weight:500}
+.header-net{font-size:34px;font-weight:800;color:#fff;letter-spacing:-.8px;margin-bottom:1px;line-height:1.15}
+.header-net-sub{font-size:15px;font-weight:500;color:rgba(255,255,255,0.55);margin-bottom:5px}
+.header-net-label{font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:.2px}
+
+/* ── Header sparkline ─────────────────────────────────── */
+.sparkline-wrap{
+  border-top:1px solid rgba(255,255,255,0.08);
+  padding:10px 20px 14px;
+  position:relative;z-index:1;
+  background:rgba(0,0,0,0.12);
+}
+.sparkline-label{
+  font-size:9px;font-weight:700;color:rgba(255,255,255,0.35);
+  letter-spacing:.8px;text-transform:uppercase;
+  margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;
+}
+.sparkline-label span{color:rgba(255,255,255,0.6);font-weight:600;font-size:10px;letter-spacing:0}
+#header-sparkline{width:100%;height:32px;display:block}
 
 /* ── Month tabs ──────────────────────────────────────────── */
 .tabs-wrap{
@@ -202,19 +225,21 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-top">
-    <div class="header-logo">Financial Dashboard</div>
-    <div class="sync-badge" style="font-size:13px;font-weight:600;letter-spacing:.3px">
-      🇹🇼 <span id="tw-clock">--:--:--</span>
+  <div class="header-body">
+    <div class="header-top">
+      <div class="header-logo">Financial Dashboard</div>
+      <div class="sync-badge">
+        🇹🇼 <span id="tw-clock">--:--:--</span>
+      </div>
     </div>
+    <div class="header-month" id="header-month">—</div>
+    <div class="header-net" id="header-port-ntd">NT$ —</div>
+    <div class="header-net-sub" id="header-port-idr">Rp —</div>
+    <div class="header-net-label">Net Worth (Income − Expense + Invest + Savings)</div>
   </div>
-  <div class="header-month" id="header-month">—</div>
-  <div class="header-net" id="header-port-ntd">NT$ —</div>
-  <div class="header-net-sub" id="header-port-idr">Rp —</div>
-  <div class="header-net-label">Net Worth (Income − Expense + Invest + Savings)</div>
   <div class="sparkline-wrap">
     <div class="sparkline-label">Pengeluaran Harian (NTD) <span id="sparkline-total"></span></div>
-    <canvas id="header-sparkline" height="22"></canvas>
+    <canvas id="header-sparkline" height="32"></canvas>
   </div>
 </div>
 
@@ -356,14 +381,20 @@ function drawSparkline(txs, month) {
     if (day >= 0 && day < daysInMonth) daily[day] += (t.ntd || 0);
   });
 
-  const maxVal  = Math.max(...daily, 1);
-  const total   = daily.reduce((a, b) => a + b, 0);
+  const maxVal = Math.max(...daily, 1);
+  const total  = daily.reduce((a, b) => a + b, 0);
   const el = document.getElementById("sparkline-total");
-  if (el) el.textContent = total > 0 ? "Total " + fmtNTD(total) : "";
+  if (el) el.textContent = total > 0 ? fmtNTD(total) : "";
+
+  const ctx2 = canvas.getContext("2d");
+  const grad = ctx2.createLinearGradient(0, 0, 0, 32);
+  grad.addColorStop(0, "rgba(147,197,253,0.85)");
+  grad.addColorStop(1, "rgba(147,197,253,0.25)");
 
   const colors = daily.map((v, i) => {
-    if (isThisMonth && i + 1 === today) return "rgba(250,204,21,0.9)";   // today — kuning
-    return v === maxVal && v > 0 ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.28)";
+    if (isThisMonth && i + 1 === today) return "rgba(250,204,21,0.95)";
+    if (v === maxVal && v > 0)          return "rgba(255,255,255,0.9)";
+    return grad;
   });
 
   sparklineChart = new Chart(canvas, {
@@ -373,9 +404,10 @@ function drawSparkline(txs, month) {
       datasets: [{
         data: daily,
         backgroundColor: colors,
-        borderRadius: 3,
-        borderSkipped: false,
-        barPercentage: 0.7,
+        borderRadius: { topLeft: 3, topRight: 3 },
+        borderSkipped: "bottom",
+        barPercentage: 0.65,
+        categoryPercentage: 0.9,
       }]
     },
     options: {
@@ -386,11 +418,11 @@ function drawSparkline(txs, month) {
         tooltip: {
           enabled: true,
           displayColors: false,
-          backgroundColor: "rgba(15,38,102,0.92)",
+          backgroundColor: "rgba(8,15,46,0.95)",
           titleColor: "#93C5FD",
           bodyColor: "#fff",
-          padding: 8,
-          cornerRadius: 8,
+          padding: 9,
+          cornerRadius: 10,
           callbacks: {
             title: ctx => `${month} ${ctx[0].label}`,
             label: ctx => ctx.raw > 0 ? "Pengeluaran: " + fmtNTD(ctx.raw) : "Tidak ada pengeluaran",
@@ -401,7 +433,7 @@ function drawSparkline(txs, month) {
         x: { display: false },
         y: { display: false, beginAtZero: true }
       },
-      animation: { duration: 400 }
+      animation: { duration: 500, easing: "easeOutQuart" }
     }
   });
 }
