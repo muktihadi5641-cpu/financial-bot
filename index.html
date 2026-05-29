@@ -37,9 +37,13 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   background:linear-gradient(160deg,#080f2e 0%,#0f2666 45%,#1a44c2 100%);
   position:relative;
   overflow:hidden;
-  min-height:200px;
+  min-height:220px;
 }
-.header-body{padding:22px 20px 20px;position:relative;z-index:2}
+/* padding-bottom 28px = ruang untuk baris label tanggal 1-31 di bawah.
+   pointer-events:none → hover lewat tembus ke canvas di bawah, supaya tooltip
+   chart bisa muncul saat kursor di area teks yang menutupi canvas. */
+.header-body{padding:22px 20px 28px;position:relative;z-index:2;pointer-events:none}
+.header-body .sync-badge{pointer-events:auto}
 .header::before{
   content:'';position:absolute;right:-80px;top:-80px;
   width:280px;height:280px;border-radius:50%;
@@ -64,19 +68,38 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 }
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#4ADE80;box-shadow:0 0 6px #4ADE80}
 .sync-dot.stale{background:#FCA5A5;box-shadow:0 0 6px #FCA5A5}
-.header-month{font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:3px;font-weight:500}
-.header-net{font-size:34px;font-weight:800;color:#fff;letter-spacing:-.8px;margin-bottom:1px;line-height:1.15}
-.header-net-sub{font-size:15px;font-weight:500;color:rgba(255,255,255,0.55);margin-bottom:5px}
-.header-net-label{font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:.2px}
+.header-month{font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:4px;font-weight:500;letter-spacing:.4px;text-transform:uppercase}
+.header-net{font-size:34px;font-weight:800;color:#fff;letter-spacing:-.9px;margin-bottom:2px;line-height:1.15;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.header-net-sub{font-size:14px;font-weight:500;color:rgba(255,255,255,0.58);margin-bottom:6px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.header-net-label{font-size:10px;color:rgba(255,255,255,0.40);letter-spacing:.4px;text-transform:uppercase}
 
-/* ── Header chart — background canvas ────────────────── */
-#daily-expense-chart{
+/* ── Header chart — confined ke kotak tengah ──────────────
+   WRAPPER dibatasi HORIZONTAL: setelah ujung teks "+Savings)" di kiri,
+   dan sebelum badge jam di kanan. Chart.js responsive akan baca dimensi
+   wrapper (60% lebar header), bukan dari canvas/header langsung. */
+/* Pakai class UNIK (.daily-chart-box) supaya tidak bentrok dengan .chart-wrap
+   yang dipakai doughnut chart di section bawah (max-width:160px). */
+.daily-chart-box{
   position:absolute;
-  bottom:0;left:0;
-  width:100%;height:100%;
+  top:8px;
+  left:20%;
+  width:60%;
+  height:calc(100% - 14px);
   z-index:0;
-  display:block;
 }
+#daily-expense-chart{
+  display:block;
+  width:100%;
+  height:100%;
+}
+/* Mobile */
+@media(max-width:640px){
+  .daily-chart-box{ left:50%; width:44%; }
+}
+@media(min-width:641px) and (max-width:900px){
+  .daily-chart-box{ left:32%; width:54%; }
+}
+.header-veil{display:none}
 
 /* ── Month tabs ──────────────────────────────────────────── */
 .tabs-wrap{
@@ -105,25 +128,27 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 
 /* ── Cards grid ──────────────────────────────────────────── */
 .cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.card{background:var(--card);border-radius:var(--radius);padding:18px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(15,23,42,0.10)}
+.card:active{transform:translateY(0)}
 .card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
 .card.income::before{background:var(--income)}
 .card.expense::before{background:var(--expense)}
 .card.invest::before{background:var(--invest)}
 .card.savings::before{background:var(--savings)}
 .card-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
-.card.income .card-icon{background:#F0FDF4}
-.card.expense .card-icon{background:#FEF2F2}
-.card.invest .card-icon{background:#FFFBEB}
-.card.savings .card-icon{background:#EFF6FF}
+.card.income .card-icon{background:linear-gradient(135deg,#F0FDF4 0%,#DCFCE7 100%)}
+.card.expense .card-icon{background:linear-gradient(135deg,#FEF2F2 0%,#FEE2E2 100%)}
+.card.invest .card-icon{background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%)}
+.card.savings .card-icon{background:linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%)}
 .card-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
 .card.income .card-label{color:var(--income)}
 .card.expense .card-label{color:var(--expense)}
 .card.invest .card-label{color:var(--invest)}
 .card.savings .card-label{color:var(--savings)}
-.card-ntd{font-size:17px;font-weight:700;color:var(--text);line-height:1.2}
-.card-idr{font-size:13px;color:var(--sub);margin-top:4px}
-.card-zero{color:var(--border) !important}
+.card-ntd{font-size:17px;font-weight:700;color:var(--text);line-height:1.2;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.card-idr{font-size:13px;color:var(--sub);margin-top:4px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.card-zero{color:#CBD5E1 !important;font-weight:500}
 
 /* ── Charts section ──────────────────────────────────────── */
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
@@ -145,25 +170,34 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .section-title{font-size:15px;font-weight:700;color:var(--text)}
 .tx-count{font-size:12px;color:var(--sub)}
-.filter-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+.filter-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .filter-tabs::-webkit-scrollbar{display:none}
 .ftab{
   flex-shrink:0;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;
   border:1.5px solid var(--border);color:var(--sub);background:var(--card);
-  cursor:pointer;white-space:nowrap;transition:all .15s;
+  cursor:pointer;white-space:nowrap;
+  transition:transform .12s ease,border-color .15s ease,color .15s ease,background-color .15s ease;
   -webkit-tap-highlight-color:transparent;
 }
 .ftab:hover{border-color:var(--primary2);color:var(--primary2)}
-.ftab.active{background:var(--primary2);border-color:var(--primary2);color:#fff}
+.ftab:active{transform:scale(.96)}
+.ftab.active{background:var(--primary2);border-color:var(--primary2);color:#fff;box-shadow:0 2px 6px rgba(29,78,216,0.25)}
 .tx-list{display:flex;flex-direction:column;gap:8px}
 .tx-item{
   background:var(--card);border-radius:12px;
   padding:12px 14px;box-shadow:var(--shadow);
   display:flex;align-items:center;gap:12px;
-  transition:transform .1s;
+  position:relative;overflow:hidden;
+  transition:transform .12s ease,box-shadow .15s ease;
 }
-.tx-item:active{transform:scale(.98)}
-.tx-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tx-item::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--border);transition:background-color .15s ease}
+.tx-item.income::before{background:var(--income)}
+.tx-item.expense::before{background:var(--expense)}
+.tx-item.invest::before{background:var(--invest)}
+.tx-item.savings::before{background:var(--savings)}
+.tx-item:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(15,23,42,0.08)}
+.tx-item:active{transform:scale(.985)}
+.tx-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:4px}
 .tx-dot.income{background:var(--income)}
 .tx-dot.expense{background:var(--expense)}
 .tx-dot.invest{background:var(--invest)}
@@ -172,8 +206,9 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .tx-desc{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tx-meta{font-size:11px;color:var(--sub);margin-top:2px}
 .tx-amt{text-align:right;flex-shrink:0}
-.tx-idr{font-size:13px;font-weight:700;color:var(--text)}
-.tx-ntd{font-size:11px;color:var(--sub);margin-top:1px}
+.tx-idr{font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.tx-ntd{font-size:11px;color:var(--sub);margin-top:1px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.tx-amt-primary{font-size:14px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .empty-state{text-align:center;padding:40px 20px;color:var(--sub);font-size:14px}
 .empty-icon{font-size:40px;margin-bottom:8px;display:block}
 
@@ -189,10 +224,15 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .net-card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);margin-bottom:10px}
 .net-line{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
 .net-line-label{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:4px}
-.net-line-val{font-size:12px;font-weight:600;color:var(--text)}
+.net-line-val{font-size:12px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .net-divider{border:none;border-top:1px solid var(--border);margin:8px 0}
+.net-ratio{height:4px;background:#F1F5F9;border-radius:4px;overflow:hidden;margin:8px 0 6px}
+.net-ratio-fill{height:100%;border-radius:4px;transition:width .4s ease,background-color .25s ease}
+.net-ratio-fill.low{background:var(--income)}
+.net-ratio-fill.mid{background:var(--invest)}
+.net-ratio-fill.high{background:var(--expense)}
 .net-total-label{font-size:11px;font-weight:700;color:var(--sub)}
-.net-total-val{font-size:15px;font-weight:700}
+.net-total-val{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:-.2px}
 .net-total-val.pos{color:var(--income)}
 .net-total-val.neg{color:var(--expense)}
 
@@ -220,7 +260,8 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 
 <!-- HEADER -->
 <div class="header">
-  <canvas id="daily-expense-chart"></canvas>
+  <div class="daily-chart-box"><canvas id="daily-expense-chart"></canvas></div>
+  <div class="header-veil"></div>
   <div class="header-body">
     <div class="header-top">
       <div class="header-logo">Financial Dashboard</div>
@@ -375,70 +416,121 @@ function drawDailyChart(txs, month) {
     }
   });
 
+  // SELALU tampilkan SEMUA hari 1..daysInMonth di canvas (tidak dipotong).
+  // Bar di hari tanpa transaksi tetap punya slot tapi tinggi 0 / transparent.
+  const labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
   const maxVal = Math.max(...dailyNTD, ...dailyIDR, 1);
   const cCtx   = canvas.getContext("2d");
   const ch     = canvas.offsetHeight || 200;
 
   const gradNTD = cCtx.createLinearGradient(0, 0, 0, ch);
-  gradNTD.addColorStop(0, "rgba(147,197,253,0.72)");
-  gradNTD.addColorStop(1, "rgba(59,130,246,0.22)");
+  gradNTD.addColorStop(0, "rgba(147,197,253,0.85)");
+  gradNTD.addColorStop(1, "rgba(59,130,246,0.30)");
 
   const gradIDR = cCtx.createLinearGradient(0, 0, 0, ch);
-  gradIDR.addColorStop(0, "rgba(251,146,60,0.85)");
-  gradIDR.addColorStop(1, "rgba(234,88,12,0.28)");
+  gradIDR.addColorStop(0, "rgba(251,146,60,0.90)");
+  gradIDR.addColorStop(1, "rgba(234,88,12,0.32)");
 
   const colorsNTD = dailyNTD.map((v, i) => {
-    if (isThisMonth && i + 1 === today) return "rgba(250,204,21,0.85)";
-    if (v > 0 && v === maxVal)          return "rgba(255,255,255,0.8)";
-    return v > 0 ? gradNTD : "rgba(0,0,0,0)";
+    const day = i + 1;
+    if (isThisMonth && day === today) return "rgba(250,204,21,0.92)";
+    if (v > 0 && v === maxVal)        return "rgba(255,255,255,0.88)";
+    return v > 0 ? gradNTD : "rgba(255,255,255,0)";
   });
   const colorsIDR = dailyIDR.map((v, i) => {
-    if (isThisMonth && i + 1 === today) return "rgba(253,224,71,0.85)";
+    const day = i + 1;
+    if (isThisMonth && day === today) return "rgba(253,224,71,0.92)";
     return v > 0 ? gradIDR : "rgba(0,0,0,0)";
   });
 
   sparklineChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels: Array.from({length: daysInMonth}, (_, i) => i + 1),
+      labels,
       datasets: [
+        // NTD = bar lebar di belakang (order 2). grouped:false → bar pas di
+        // tengah slot, lurus dengan label tanggal.
         { label:"NTD", data:dailyNTD, backgroundColor:colorsNTD,
           borderRadius:{topLeft:3,topRight:3}, borderSkipped:"bottom",
-          barPercentage:0.72, categoryPercentage:0.88, order:2 },
+          barPercentage:0.82, categoryPercentage:0.94, order:2,
+          grouped:false },
+        // IDR = bar sempit di depan (order 1). Overlay center → tidak makan
+        // ruang horizontal NTD, sisi NTD tetap terlihat di kiri-kanan IDR.
         { label:"IDR", data:dailyIDR, backgroundColor:colorsIDR,
           borderRadius:{topLeft:2,topRight:2}, borderSkipped:"bottom",
-          barPercentage:0.32, categoryPercentage:0.88, order:1 }
+          barPercentage:0.38, categoryPercentage:0.94, order:1,
+          grouped:false }
       ]
     },
     options: {
       responsive:true, maintainAspectRatio:false,
-      layout:{padding:{bottom:0,top:0}},
+      layout:{padding:{bottom:2,top:4,left:0,right:0}},
+      // Interaction: tampilkan tooltip di kolom hari manapun, tidak perlu
+      // pointer tepat di atas bar (bar hari kosong transparan, mustahil di-hover).
+      interaction:{mode:"index",intersect:false,axis:"x"},
       plugins: {
         legend:{display:false},
         tooltip: {
-          enabled:true, displayColors:true,
-          backgroundColor:"rgba(8,15,46,0.96)", titleColor:"#93C5FD", bodyColor:"#fff",
-          padding:10, cornerRadius:10,
-          titleFont:{size:12,weight:"600"}, bodyFont:{size:11},
+          enabled:true,
+          mode:"index", intersect:false, axis:"x",
+          position:"nearest",
+          displayColors:true,
+          backgroundColor:"rgba(8,15,46,0.97)",
+          titleColor:"#FACC15",
+          bodyColor:"#fff",
+          borderColor:"rgba(147,197,253,0.25)",
+          borderWidth:1,
+          padding:{x:12,y:10},
+          cornerRadius:10,
+          titleFont:{size:13,weight:"700"},
+          bodyFont:{size:12,weight:"500"},
+          bodySpacing:4,
+          boxPadding:6,
+          caretSize:6,
           callbacks: {
             title: ctx => {
+              if (!ctx.length) return "";
               const day = String(ctx[0].label).padStart(2,"0");
               const mi  = String(monthIdx+1).padStart(2,"0");
               return `${day}/${mi}/2026`;
             },
-            label: ctx => {
-              if (ctx.raw <= 0) return null;
-              if (ctx.dataset.label === "NTD") return " NTD: "+fmtNTD(ctx.raw);
-              return " IDR: "+fmtIDR(ctx.raw*IDR_RATE);
+            // Selalu tampilkan NTD dan IDR aktual (bukan konversi).
+            // Empty day → "Tidak ada pengeluaran" via beforeBody.
+            beforeBody: ctx => {
+              const ntd = ctx.find(c => c.dataset.label === "NTD")?.raw || 0;
+              const idr = (ctx.find(c => c.dataset.label === "IDR")?.raw || 0) * IDR_RATE;
+              if (ntd <= 0 && idr <= 0) return "Tidak ada pengeluaran";
+              return "";
             },
-            filter: item => item.raw > 0,
+            label: ctx => {
+              if (ctx.dataset.label === "NTD") return "  " + fmtNTD(ctx.raw);
+              // IDR dataset: ctx.raw disimpan dalam unit NTD-equivalent → kalikan balik
+              return "  " + fmtIDR(ctx.raw * IDR_RATE);
+            },
+            labelColor: ctx => {
+              const c = ctx.dataset.label === "NTD"
+                ? "rgba(147,197,253,0.95)" : "rgba(251,146,60,0.95)";
+              return {backgroundColor:c,borderColor:c,borderWidth:0,borderRadius:3};
+            },
+            // Tampilkan KEDUA mata uang selama hari itu tidak benar-benar kosong
+            // (kalau kosong, label di-suppress; beforeBody yang menampilkan pesan).
+            filter: (item, _i, _arr, data) => {
+              const idx  = item.dataIndex;
+              const ntd  = data.datasets[0].data[idx] || 0;
+              const idrE = data.datasets[1].data[idx] || 0;
+              return (ntd > 0 || idrE > 0);
+            },
           }
         }
       },
       scales: {
         x: {
           display:true,
-          ticks:{color:"rgba(255,255,255,0.35)",font:{size:7},maxRotation:0,autoSkip:false,padding:2},
+          ticks:{
+            color:"rgba(255,255,255,0.55)",
+            font:{size:9,weight:"500"},
+            maxRotation:0,autoSkip:false,padding:4
+          },
           grid:{display:false},
           border:{display:false},
         },
@@ -473,6 +565,13 @@ function netRowHTML(m) {
   const netNTD = m.ntd.income - m.ntd.expense;
   const posI = netIDR >= 0, posN = netNTD >= 0;
   function card(title, inc, exp, net, pos, fmtInc, fmtExp, fmtNet) {
+    // Spending ratio: berapa % income yang sudah keluar
+    const spentPct = inc > 0 ? Math.min(100, Math.round((exp / inc) * 100)) : (exp > 0 ? 100 : 0);
+    const ratioLevel = spentPct < 50 ? 'low' : spentPct < 80 ? 'mid' : 'high';
+    const ratioHTML = (inc > 0 || exp > 0) ? `
+      <div class="net-ratio" title="${spentPct}% income terpakai">
+        <div class="net-ratio-fill ${ratioLevel}" style="width:${spentPct}%"></div>
+      </div>` : '';
     return `
     <div class="net-card">
       <div class="net-card-title">${title}</div>
@@ -484,6 +583,7 @@ function netRowHTML(m) {
         <span class="net-line-label"><span style="color:var(--expense)">↓</span> Expense</span>
         <span class="net-line-val" style="color:var(--expense)">${fmtExp(exp)}</span>
       </div>
+      ${ratioHTML}
       <hr class="net-divider">
       <div class="net-line">
         <span class="net-total-label">Net</span>
@@ -597,16 +697,26 @@ function txListHTML(txs) {
     const cat  = tx.category ? `${tx.category}` : "—";
     const showIDR = tx.idr > 0;
     const showNTD = tx.ntd > 0;
+    // Single-currency tx → tampilkan satu nominal besar; both → primary IDR + sub NTD
+    let amtHTML;
+    if (showNTD && !showIDR) {
+      amtHTML = `<div class="tx-amt-primary">${fmtNTD(tx.ntd)}</div>`;
+    } else if (showIDR && !showNTD) {
+      amtHTML = `<div class="tx-amt-primary">${fmtIDR(tx.idr)}</div>`;
+    } else if (showIDR && showNTD) {
+      amtHTML = `<div class="tx-idr">${fmtIDR(tx.idr)}</div><div class="tx-ntd">${fmtNTD(tx.ntd)}</div>`;
+    } else {
+      amtHTML = `<div class="tx-amt-primary" style="color:var(--sub);font-weight:500">Rp 0</div>`;
+    }
     return `
-    <div class="tx-item">
+    <div class="tx-item ${cls}">
       <div class="tx-dot ${cls}"></div>
       <div class="tx-info">
         <div class="tx-desc">${desc}</div>
         <div class="tx-meta">${tx.date} · ${cat}</div>
       </div>
       <div class="tx-amt">
-        <div class="tx-idr">${showIDR ? fmtIDR(tx.idr) : (showNTD ? '' : 'Rp 0')}</div>
-        ${showNTD ? `<div class="tx-ntd">${fmtNTD(tx.ntd)}</div>` : ''}
+        ${amtHTML}
       </div>
     </div>`;
   }).join("");

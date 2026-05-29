@@ -120,7 +120,11 @@ def get_data_cached():
 @app.route("/")
 def index():
     html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
-    return send_file(html_path)
+    resp = send_file(html_path, max_age=0)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"]        = "no-cache"
+    resp.headers["Expires"]       = "0"
+    return resp
 
 
 @app.route("/api/data")
