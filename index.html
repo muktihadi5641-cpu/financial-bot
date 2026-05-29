@@ -58,6 +58,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 }
 .header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
 .header-logo{font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);letter-spacing:1.2px;text-transform:uppercase}
+.header-top-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
 .sync-badge{
   display:flex;align-items:center;gap:6px;
   background:rgba(255,255,255,0.1);
@@ -68,6 +69,18 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 }
 .sync-dot{width:6px;height:6px;border-radius:50%;background:#4ADE80;box-shadow:0 0 6px #4ADE80}
 .sync-dot.stale{background:#FCA5A5;box-shadow:0 0 6px #FCA5A5}
+/* Rate badge (NT$ → Rp live exchange) */
+.rate-badge{
+  display:flex;align-items:center;gap:5px;
+  background:rgba(253,224,71,0.10);
+  padding:4px 10px;border-radius:14px;
+  font-size:10.5px;font-weight:600;color:rgba(253,224,71,0.92);
+  border:1px solid rgba(253,224,71,0.22);
+  letter-spacing:.2px;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+}
+.rate-badge .rate-arrow{opacity:.55;font-size:10px}
+.rate-badge.stale{opacity:.6}
 .header-month{font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:4px;font-weight:500;letter-spacing:.4px;text-transform:uppercase}
 .header-net{font-size:34px;font-weight:800;color:#fff;letter-spacing:-.9px;margin-bottom:2px;line-height:1.15;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .header-net-sub{font-size:14px;font-weight:500;color:rgba(255,255,255,0.58);margin-bottom:6px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
@@ -265,8 +278,13 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   <div class="header-body">
     <div class="header-top">
       <div class="header-logo">Financial Dashboard</div>
-      <div class="sync-badge">
-        🇹🇼 <span id="tw-clock">--:--:--</span>
+      <div class="header-top-right">
+        <div class="sync-badge">
+          🇹🇼 <span id="tw-clock">--:--:--</span>
+        </div>
+        <div class="rate-badge" id="rate-badge" title="Live kurs TWD → IDR">
+          1 NT$ <span class="rate-arrow">→</span> <span id="rate-display">Rp …</span>
+        </div>
       </div>
     </div>
     <div class="header-month" id="header-month">—</div>
@@ -305,6 +323,12 @@ let selectedMonth = MONTHS[new Date().getMonth()];
 let filterType = "all";
 let idrChart = null, ntdChart = null, sparklineChart = null;
 let refreshTimer = null;
+
+// Live exchange rate (TWD → IDR). 480 = fallback offline / before first fetch.
+let LIVE_IDR_RATE = 480;
+const RATE_CACHE_KEY  = "twd_idr_rate_v1";
+const RATE_TTL_MS     = 60 * 60 * 1000;  // 1 jam
+const RATE_REFRESH_MS = 60 * 60 * 1000;  // refresh tiap 1 jam
 
 // ── Format helpers ─────────────────────────────────────────
 function fmtIDR(n) {
@@ -404,7 +428,7 @@ function drawDailyChart(txs, month) {
   const daysInMonth = new Date(2026, monthIdx + 1, 0).getDate();
   const isThisMonth = monthIdx === new Date().getMonth();
   const today       = new Date().getDate();
-  const IDR_RATE    = 480;
+  const IDR_RATE    = LIVE_IDR_RATE;  // pakai kurs live (fallback 480)
 
   const dailyNTD = Array(daysInMonth).fill(0);
   const dailyIDR = Array(daysInMonth).fill(0);
@@ -423,43 +447,33 @@ function drawDailyChart(txs, month) {
   const cCtx   = canvas.getContext("2d");
   const ch     = canvas.offsetHeight || 200;
 
+  // NTD = biru
   const gradNTD = cCtx.createLinearGradient(0, 0, 0, ch);
-  gradNTD.addColorStop(0, "rgba(147,197,253,0.85)");
-  gradNTD.addColorStop(1, "rgba(59,130,246,0.30)");
+  gradNTD.addColorStop(0, "rgba(96,165,250,0.95)");   // blue-400 atas
+  gradNTD.addColorStop(1, "rgba(37,99,235,0.40)");    // blue-600 bawah
 
+  // IDR (Rp) = kuning
   const gradIDR = cCtx.createLinearGradient(0, 0, 0, ch);
-  gradIDR.addColorStop(0, "rgba(251,146,60,0.90)");
-  gradIDR.addColorStop(1, "rgba(234,88,12,0.32)");
+  gradIDR.addColorStop(0, "rgba(253,224,71,0.95)");   // yellow-300 atas
+  gradIDR.addColorStop(1, "rgba(202,138,4,0.40)");    // yellow-600 bawah
 
-  const colorsNTD = dailyNTD.map((v, i) => {
-    const day = i + 1;
-    if (isThisMonth && day === today) return "rgba(250,204,21,0.92)";
-    if (v > 0 && v === maxVal)        return "rgba(255,255,255,0.88)";
-    return v > 0 ? gradNTD : "rgba(255,255,255,0)";
-  });
-  const colorsIDR = dailyIDR.map((v, i) => {
-    const day = i + 1;
-    if (isThisMonth && day === today) return "rgba(253,224,71,0.92)";
-    return v > 0 ? gradIDR : "rgba(0,0,0,0)";
-  });
+  // Warna seragam untuk semua hari (tidak ada highlight today/max-value)
+  const colorsNTD = dailyNTD.map(v => v > 0 ? gradNTD : "rgba(0,0,0,0)");
+  const colorsIDR = dailyIDR.map(v => v > 0 ? gradIDR : "rgba(0,0,0,0)");
 
   sparklineChart = new Chart(canvas, {
     type: "bar",
     data: {
       labels,
       datasets: [
-        // NTD = bar lebar di belakang (order 2). grouped:false → bar pas di
-        // tengah slot, lurus dengan label tanggal.
+        // NTD = bar di KIRI sub-slot (default grouped mode)
         { label:"NTD", data:dailyNTD, backgroundColor:colorsNTD,
           borderRadius:{topLeft:3,topRight:3}, borderSkipped:"bottom",
-          barPercentage:0.82, categoryPercentage:0.94, order:2,
-          grouped:false },
-        // IDR = bar sempit di depan (order 1). Overlay center → tidak makan
-        // ruang horizontal NTD, sisi NTD tetap terlihat di kiri-kanan IDR.
+          barPercentage:0.88, categoryPercentage:0.88, order:1 },
+        // IDR = bar di KANAN sub-slot
         { label:"IDR", data:dailyIDR, backgroundColor:colorsIDR,
-          borderRadius:{topLeft:2,topRight:2}, borderSkipped:"bottom",
-          barPercentage:0.38, categoryPercentage:0.94, order:1,
-          grouped:false }
+          borderRadius:{topLeft:3,topRight:3}, borderSkipped:"bottom",
+          barPercentage:0.88, categoryPercentage:0.88, order:2 }
       ]
     },
     options: {
@@ -475,6 +489,13 @@ function drawDailyChart(txs, month) {
           mode:"index", intersect:false, axis:"x",
           position:"nearest",
           displayColors:true,
+          // NTD selalu di atas, Rp di bawah — independen dari draw order
+          // (draw order: IDR di depan supaya bar oranye overlay di atas NTD).
+          itemSort: (a, b) => {
+            if (a.dataset.label === "NTD" && b.dataset.label === "IDR") return -1;
+            if (a.dataset.label === "IDR" && b.dataset.label === "NTD") return 1;
+            return 0;
+          },
           backgroundColor:"rgba(8,15,46,0.97)",
           titleColor:"#FACC15",
           bodyColor:"#fff",
@@ -508,8 +529,9 @@ function drawDailyChart(txs, month) {
               return "  " + fmtIDR(ctx.raw * IDR_RATE);
             },
             labelColor: ctx => {
+              // NTD biru, IDR kuning — match dengan gradient bar
               const c = ctx.dataset.label === "NTD"
-                ? "rgba(147,197,253,0.95)" : "rgba(251,146,60,0.95)";
+                ? "rgba(96,165,250,0.95)" : "rgba(253,224,71,0.95)";
               return {backgroundColor:c,borderColor:c,borderWidth:0,borderRadius:3};
             },
             // Tampilkan KEDUA mata uang selama hari itu tidak benar-benar kosong
@@ -779,6 +801,105 @@ function renderContent(data) {
   }, 0);
 }
 
+// ── Live exchange rate (TWD → IDR) ─────────────────────────
+function loadCachedRate() {
+  try {
+    const raw = localStorage.getItem(RATE_CACHE_KEY);
+    if (!raw) return null;
+    const {rate, ts} = JSON.parse(raw);
+    if (!rate || (Date.now() - ts) > RATE_TTL_MS) return {rate, stale:true};
+    return {rate, stale:false};
+  } catch { return null; }
+}
+function saveCachedRate(rate) {
+  try { localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({rate, ts: Date.now()})); } catch {}
+}
+function renderRate(rate, stale) {
+  const badge = document.getElementById("rate-badge");
+  const span  = document.getElementById("rate-display");
+  if (!badge || !span) return;
+  span.textContent = "Rp " + Math.round(rate).toLocaleString("id-ID");
+  badge.classList.toggle("stale", !!stale);
+  badge.title = stale
+    ? "Kurs cached (offline). Akan refresh saat online."
+    : "Live kurs TWD → IDR (sumber: frankfurter.app)";
+}
+async function fetchExchangeRate() {
+  // Primary: frankfurter.app (free, CORS-enabled). Fallback: open.er-api.com
+  try {
+    const r = await fetch("https://api.frankfurter.app/latest?from=TWD&to=IDR", {cache:"no-store"});
+    if (r.ok) {
+      const j = await r.json();
+      if (j?.rates?.IDR > 0) return j.rates.IDR;
+    }
+  } catch {}
+  try {
+    const r = await fetch("https://open.er-api.com/v6/latest/TWD", {cache:"no-store"});
+    if (r.ok) {
+      const j = await r.json();
+      if (j?.rates?.IDR > 0) return j.rates.IDR;
+    }
+  } catch {}
+  return null;
+}
+async function refreshRate() {
+  // Tampilkan cached dulu (kalau ada) supaya UI nggak kosong
+  const cached = loadCachedRate();
+  if (cached) {
+    LIVE_IDR_RATE = cached.rate;
+    renderRate(cached.rate, cached.stale);
+  }
+  const fresh = await fetchExchangeRate();
+  if (fresh) {
+    LIVE_IDR_RATE = fresh;
+    saveCachedRate(fresh);
+    renderRate(fresh, false);
+    // Re-render chart kalau kurs berubah signifikan (>2%)
+    if (allData && cached && Math.abs(fresh - cached.rate) / cached.rate > 0.02) {
+      renderContent(allData);
+    }
+  } else if (!cached) {
+    renderRate(LIVE_IDR_RATE, true);  // fallback 480
+  }
+}
+
+// ── Auto-rollover: net worth bulan kemarin → income bulan ini ──
+function processRollover(data) {
+  if (!data?.months) return;
+  for (let i = 1; i < MONTHS.length; i++) {
+    const prev = data.months[MONTHS[i - 1]];
+    const cur  = data.months[MONTHS[i]];
+    if (!prev || !cur) continue;
+
+    const pn = prev.ntd || {}, pi = prev.idr || {};
+    const prevNetNTD = (pn.income||0) - (pn.expense||0) + (pn.invest||0) + (pn.savings||0);
+    const prevNetIDR = (pi.income||0) - (pi.expense||0) + (pi.invest||0) + (pi.savings||0);
+    if (prevNetNTD <= 0 && prevNetIDR <= 0) continue;
+
+    cur.ntd = cur.ntd || {income:0,expense:0,invest:0,savings:0};
+    cur.idr = cur.idr || {income:0,expense:0,invest:0,savings:0};
+    cur.transactions = cur.transactions || [];
+    // Skip kalau sudah pernah ditambahkan (defensive — fetched data harusnya fresh)
+    if (cur.transactions.some(t => t.category === "Sisa Bulan Lalu")) continue;
+
+    const rolloverNTD = Math.max(0, prevNetNTD);
+    const rolloverIDR = Math.max(0, prevNetIDR);
+    cur.ntd.income = (cur.ntd.income||0) + rolloverNTD;
+    cur.idr.income = (cur.idr.income||0) + rolloverIDR;
+
+    const mNum = String(i + 1).padStart(2, "0");
+    cur.transactions.push({
+      date:        `01/${mNum}/2026`,
+      type:        "Income",
+      category:    "Sisa Bulan Lalu",
+      description: `Sisa bulan ${MONTHS[i-1]} (auto-rollover)`,
+      ntd:         rolloverNTD,
+      idr:         rolloverIDR,
+    });
+    cur.tx_count = (cur.tx_count||0) + 1;
+  }
+}
+
 // ── Init & auto-refresh ────────────────────────────────────
 async function init() {
   document.getElementById("content").innerHTML = '<div class="loading"><div class="spinner"></div></div>';
@@ -791,6 +912,7 @@ async function init() {
     return;
   }
 
+  processRollover(data);
   allData = data;
   buildTabs(data);
   renderContent(data);
@@ -799,6 +921,7 @@ async function init() {
 async function refresh() {
   const data = await fetchData();
   if (!data.error) {
+    processRollover(data);
     allData = data;
     buildTabs(data);
     renderContent(data);
@@ -816,6 +939,8 @@ function updateClock() {
 function startDashboard() {
   updateClock();
   setInterval(updateClock, 1000);
+  refreshRate();                                  // fetch kurs sekarang
+  setInterval(refreshRate, RATE_REFRESH_MS);      // refresh kurs tiap 1 jam
   init();
   setInterval(refresh, REFRESH_MS);
 }
