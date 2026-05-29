@@ -178,6 +178,12 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .net-total-val.pos{color:var(--income)}
 .net-total-val.neg{color:var(--expense)}
 
+/* ── Header sparkline ────────────────────────────────────── */
+.sparkline-wrap{margin-top:18px;position:relative}
+.sparkline-label{font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:.6px;text-transform:uppercase;margin-bottom:5px;display:flex;justify-content:space-between}
+.sparkline-label span{color:rgba(255,255,255,0.6);font-variant-numeric:tabular-nums}
+#header-sparkline{width:100%;height:60px;display:block}
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media(max-width:480px){
   .charts{grid-template-columns:1fr}
@@ -206,6 +212,10 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   <div class="header-net" id="header-port-ntd">NT$ —</div>
   <div class="header-net-sub" id="header-port-idr">Rp —</div>
   <div class="header-net-label">Net Worth (Income − Expense + Invest + Savings)</div>
+  <div class="sparkline-wrap">
+    <div class="sparkline-label">Pengeluaran Harian (NTD) <span id="sparkline-total"></span></div>
+    <canvas id="header-sparkline" height="60"></canvas>
+  </div>
 </div>
 
 <!-- MONTH TABS -->
@@ -235,7 +245,7 @@ const TYPE_LABELS = {income:"Income",expense:"Expense",invest:"Invest",savings:"
 let allData = null;
 let selectedMonth = MONTHS[new Date().getMonth()];
 let filterType = "all";
-let idrChart = null, ntdChart = null;
+let idrChart = null, ntdChart = null, sparklineChart = null;
 let refreshTimer = null;
 
 // ── Format helpers ─────────────────────────────────────────
@@ -320,10 +330,80 @@ function renderHeader(data) {
     const portIDR = (m.idr.income || 0) - (m.idr.expense || 0) + (m.idr.invest || 0) + (m.idr.savings || 0);
     document.getElementById("header-port-ntd").textContent = fmtNTD(portNTD);
     document.getElementById("header-port-idr").textContent = fmtIDR(portIDR);
+    setTimeout(() => drawSparkline(m.transactions || [], selectedMonth), 0);
   } else {
     document.getElementById("header-port-ntd").textContent = "NT$ 0";
     document.getElementById("header-port-idr").textContent = "Rp 0";
+    setTimeout(() => drawSparkline([], selectedMonth), 0);
   }
+}
+
+// ── Header sparkline ───────────────────────────────────────
+function drawSparkline(txs, month) {
+  const canvas = document.getElementById("header-sparkline");
+  if (!canvas) return;
+  if (sparklineChart) { sparklineChart.destroy(); sparklineChart = null; }
+
+  const monthIdx = MONTHS.indexOf(month);
+  const daysInMonth = new Date(2026, monthIdx + 1, 0).getDate();
+  const nowMonth    = new Date().getMonth();
+  const isThisMonth = monthIdx === nowMonth;
+  const today       = new Date().getDate();
+
+  const daily = Array(daysInMonth).fill(0);
+  txs.filter(t => t.type === "Expanse").forEach(t => {
+    const day = parseInt(t.date.split("/")[0], 10) - 1;
+    if (day >= 0 && day < daysInMonth) daily[day] += (t.ntd || 0);
+  });
+
+  const maxVal  = Math.max(...daily, 1);
+  const total   = daily.reduce((a, b) => a + b, 0);
+  const el = document.getElementById("sparkline-total");
+  if (el) el.textContent = total > 0 ? "Total " + fmtNTD(total) : "";
+
+  const colors = daily.map((v, i) => {
+    if (isThisMonth && i + 1 === today) return "rgba(250,204,21,0.9)";   // today — kuning
+    return v === maxVal && v > 0 ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.28)";
+  });
+
+  sparklineChart = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: Array.from({length: daysInMonth}, (_, i) => i + 1),
+      datasets: [{
+        data: daily,
+        backgroundColor: colors,
+        borderRadius: 3,
+        borderSkipped: false,
+        barPercentage: 0.7,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          displayColors: false,
+          backgroundColor: "rgba(15,38,102,0.92)",
+          titleColor: "#93C5FD",
+          bodyColor: "#fff",
+          padding: 8,
+          cornerRadius: 8,
+          callbacks: {
+            title: ctx => `${month} ${ctx[0].label}`,
+            label: ctx => ctx.raw > 0 ? "Pengeluaran: " + fmtNTD(ctx.raw) : "Tidak ada pengeluaran",
+          }
+        }
+      },
+      scales: {
+        x: { display: false },
+        y: { display: false, beginAtZero: true }
+      },
+      animation: { duration: 400 }
+    }
+  });
 }
 
 // ── Render cards ───────────────────────────────────────────
@@ -587,10 +667,6 @@ function startDashboard() {
 }
 
 startDashboard();
-
-if (sessionStorage.getItem("_fa") === _H) {
-  startDashboard();
-}
 </script>
 </body>
 </html>
