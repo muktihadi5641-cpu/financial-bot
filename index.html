@@ -71,21 +71,21 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 /* ── Daily chart section ──────────────────────────────── */
 .daily-chart-section{
   background:linear-gradient(180deg,#0d1f5c 0%,#08122e 100%);
-  padding:10px 16px 6px;
+  padding:5px 16px 2px;
   border-bottom:1px solid rgba(255,255,255,0.07);
 }
 .daily-chart-header{
   display:flex;justify-content:space-between;align-items:center;
-  margin-bottom:6px;
+  margin-bottom:3px;
 }
 .daily-chart-title{
-  font-size:9px;font-weight:700;color:rgba(255,255,255,0.38);
-  letter-spacing:.8px;text-transform:uppercase;
+  font-size:8px;font-weight:700;color:rgba(255,255,255,0.35);
+  letter-spacing:.7px;text-transform:uppercase;
 }
 .daily-chart-total{
-  font-size:10px;font-weight:600;color:rgba(255,255,255,0.6);
+  font-size:9px;font-weight:600;color:rgba(255,255,255,0.55);
 }
-#daily-expense-chart{width:100%;height:80px;display:block}
+#daily-expense-chart{width:100%;height:38px;display:block}
 
 /* ── Month tabs ──────────────────────────────────────────── */
 .tabs-wrap{
@@ -249,7 +249,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
     <div class="daily-chart-title">Pengeluaran Harian (NTD)</div>
     <div class="daily-chart-total" id="daily-chart-total"></div>
   </div>
-  <canvas id="daily-expense-chart" height="80"></canvas>
+  <canvas id="daily-expense-chart" height="38"></canvas>
 </div>
 
 <!-- MONTH TABS -->
@@ -393,9 +393,9 @@ function drawDailyChart(txs, month) {
   if (totEl) totEl.textContent = total > 0 ? "Total " + fmtNTD(total) : "";
 
   const cCtx = canvas.getContext("2d");
-  const grad = cCtx.createLinearGradient(0, 0, 0, 60);
+  const grad = cCtx.createLinearGradient(0, 0, 0, 38);
   grad.addColorStop(0, "rgba(96,165,250,0.9)");
-  grad.addColorStop(1, "rgba(59,130,246,0.3)");
+  grad.addColorStop(1, "rgba(59,130,246,0.25)");
 
   const colors = daily.map((v, i) => {
     if (isThisMonth && i + 1 === today) return "rgba(250,204,21,0.95)";
@@ -419,7 +419,7 @@ function drawDailyChart(txs, month) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { bottom: 2 } },
+      layout: { padding: { bottom: 0, top: 0 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -448,11 +448,11 @@ function drawDailyChart(txs, month) {
         x: {
           display: true,
           ticks: {
-            color: "rgba(255,255,255,0.35)",
-            font: { size: 8 },
+            color: "rgba(255,255,255,0.3)",
+            font: { size: 7 },
             maxRotation: 0,
             autoSkip: false,
-            padding: 3,
+            padding: 1,
           },
           grid: { display: false },
           border: { display: false },
