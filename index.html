@@ -179,10 +179,10 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .net-total-val.neg{color:var(--expense)}
 
 /* ── Header sparkline ────────────────────────────────────── */
-.sparkline-wrap{margin-top:10px;position:relative}
-.sparkline-label{font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:.6px;text-transform:uppercase;margin-bottom:3px;display:flex;justify-content:space-between}
-.sparkline-label span{color:rgba(255,255,255,0.6);font-variant-numeric:tabular-nums}
-#header-sparkline{width:100%;height:36px;display:block}
+.sparkline-wrap{position:absolute;bottom:8px;left:20px;right:20px}
+.sparkline-label{font-size:9px;color:rgba(255,255,255,0.38);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px;display:flex;justify-content:space-between}
+.sparkline-label span{color:rgba(255,255,255,0.55)}
+#header-sparkline{width:100%;height:22px;display:block}
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media(max-width:480px){
@@ -214,7 +214,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   <div class="header-net-label">Net Worth (Income − Expense + Invest + Savings)</div>
   <div class="sparkline-wrap">
     <div class="sparkline-label">Pengeluaran Harian (NTD) <span id="sparkline-total"></span></div>
-    <canvas id="header-sparkline" height="36"></canvas>
+    <canvas id="header-sparkline" height="22"></canvas>
   </div>
 </div>
 
