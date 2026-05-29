@@ -362,7 +362,7 @@ function drawDailyChart(txs, month) {
   const daysInMonth = new Date(2026, monthIdx + 1, 0).getDate();
   const isThisMonth = monthIdx === new Date().getMonth();
   const today       = new Date().getDate();
-  const IDR_RATE    = 480; // 1 NTD ≈ 480 IDR
+  const IDR_RATE    = 480;
 
   const dailyNTD = Array(daysInMonth).fill(0);
   const dailyIDR = Array(daysInMonth).fill(0);
@@ -370,90 +370,82 @@ function drawDailyChart(txs, month) {
     const day = parseInt(t.date.split("/")[0], 10) - 1;
     if (day >= 0 && day < daysInMonth) {
       dailyNTD[day] += (t.ntd || 0);
-      dailyIDR[day] += (t.idr || 0) / IDR_RATE; // konversi ke NTD equiv
+      dailyIDR[day] += (t.idr || 0) / IDR_RATE;
     }
   });
 
-  const maxVal = Math.max(...dailyNTD, ...dailyIDR, 1);
+  // Hitung range hari yang ada data (first → last transaction day)
+  let startIdx = 0, endIdx = daysInMonth - 1;
+  for (let i = 0; i < daysInMonth; i++) {
+    if (dailyNTD[i] > 0 || dailyIDR[i] > 0) { startIdx = i; break; }
+  }
+  for (let i = daysInMonth - 1; i >= 0; i--) {
+    if (dailyNTD[i] > 0 || dailyIDR[i] > 0) { endIdx = i; break; }
+  }
+  // Bulan berjalan: perpanjang hingga hari ini
+  if (isThisMonth && today - 1 > endIdx) endIdx = today - 1;
 
-  const cCtx = canvas.getContext("2d");
+  const sliceNTD = dailyNTD.slice(startIdx, endIdx + 1);
+  const sliceIDR = dailyIDR.slice(startIdx, endIdx + 1);
+  const labels   = Array.from({length: endIdx - startIdx + 1}, (_, i) => startIdx + i + 1);
 
-  // Gradient NTD (biru, lebar — layer bawah)
-  const gradNTD = cCtx.createLinearGradient(0, 0, 0, 72);
+  const maxVal = Math.max(...sliceNTD, ...sliceIDR, 1);
+  const cCtx   = canvas.getContext("2d");
+  const ch     = canvas.offsetHeight || 62;
+
+  const gradNTD = cCtx.createLinearGradient(0, 0, 0, ch);
   gradNTD.addColorStop(0, "rgba(96,165,250,0.85)");
   gradNTD.addColorStop(1, "rgba(59,130,246,0.18)");
 
-  // Gradient IDR (oranye, sempit — layer atas)
-  const gradIDR = cCtx.createLinearGradient(0, 0, 0, 72);
+  const gradIDR = cCtx.createLinearGradient(0, 0, 0, ch);
   gradIDR.addColorStop(0, "rgba(251,146,60,0.95)");
   gradIDR.addColorStop(1, "rgba(234,88,12,0.35)");
 
-  const colorsNTD = dailyNTD.map((v, i) => {
-    if (isThisMonth && i + 1 === today) return "rgba(250,204,21,0.9)";
-    if (v > 0 && v === maxVal)          return "rgba(255,255,255,0.9)";
+  const colorsNTD = sliceNTD.map((v, i) => {
+    const day = startIdx + i + 1;
+    if (isThisMonth && day === today) return "rgba(250,204,21,0.9)";
+    if (v > 0 && v === maxVal)        return "rgba(255,255,255,0.9)";
     return v > 0 ? gradNTD : "rgba(255,255,255,0.06)";
   });
-  const colorsIDR = dailyIDR.map((v, i) => {
-    if (isThisMonth && i + 1 === today) return "rgba(253,224,71,0.9)";
-    return v > 0 ? gradIDR : "rgba(0,0,0,0)"; // transparan kalau 0
+  const colorsIDR = sliceIDR.map((v, i) => {
+    const day = startIdx + i + 1;
+    if (isThisMonth && day === today) return "rgba(253,224,71,0.9)";
+    return v > 0 ? gradIDR : "rgba(0,0,0,0)";
   });
 
   sparklineChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels: Array.from({length: daysInMonth}, (_, i) => i + 1),
+      labels,
       datasets: [
-        {
-          // NTD — lebar, di belakang
-          label: "NTD",
-          data: dailyNTD,
-          backgroundColor: colorsNTD,
-          borderRadius: { topLeft: 3, topRight: 3 },
-          borderSkipped: "bottom",
-          barPercentage: 0.75,
-          categoryPercentage: 0.88,
-          order: 2,
-        },
-        {
-          // IDR — sempit, di depan/atas
-          label: "IDR",
-          data: dailyIDR,
-          backgroundColor: colorsIDR,
-          borderRadius: { topLeft: 2, topRight: 2 },
-          borderSkipped: "bottom",
-          barPercentage: 0.35,
-          categoryPercentage: 0.88,
-          order: 1,
-        }
+        { label:"NTD", data:sliceNTD, backgroundColor:colorsNTD,
+          borderRadius:{topLeft:3,topRight:3}, borderSkipped:"bottom",
+          barPercentage:0.75, categoryPercentage:0.88, order:2 },
+        { label:"IDR", data:sliceIDR, backgroundColor:colorsIDR,
+          borderRadius:{topLeft:2,topRight:2}, borderSkipped:"bottom",
+          barPercentage:0.35, categoryPercentage:0.88, order:1 }
       ]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: { bottom: 0, top: 0 } },
+      responsive:true, maintainAspectRatio:false,
+      layout:{padding:{bottom:0,top:0}},
       plugins: {
-        legend: { display: false },
+        legend:{display:false},
         tooltip: {
-          enabled: true,
-          displayColors: true,
-          backgroundColor: "rgba(8,15,46,0.96)",
-          titleColor: "#93C5FD",
-          bodyColor: "#fff",
-          padding: 10,
-          cornerRadius: 10,
-          titleFont: { size: 12, weight: "600" },
-          bodyFont: { size: 11 },
+          enabled:true, displayColors:true,
+          backgroundColor:"rgba(8,15,46,0.96)", titleColor:"#93C5FD", bodyColor:"#fff",
+          padding:10, cornerRadius:10,
+          titleFont:{size:12,weight:"600"}, bodyFont:{size:11},
           callbacks: {
             title: ctx => {
-              const day = String(ctx[0].label).padStart(2, "0");
-              const mi  = String(monthIdx + 1).padStart(2, "0");
+              const day = String(ctx[0].label).padStart(2,"0");
+              const mi  = String(monthIdx+1).padStart(2,"0");
               return `${day}/${mi}/2026`;
             },
             label: ctx => {
               if (ctx.raw <= 0) return null;
-              if (ctx.dataset.label === "NTD")
-                return " NTD: " + fmtNTD(ctx.raw);
-              return " IDR: " + fmtIDR(ctx.raw * IDR_RATE);
+              if (ctx.dataset.label === "NTD") return " NTD: "+fmtNTD(ctx.raw);
+              return " IDR: "+fmtIDR(ctx.raw*IDR_RATE);
             },
             filter: item => item.raw > 0,
           }
@@ -461,20 +453,14 @@ function drawDailyChart(txs, month) {
       },
       scales: {
         x: {
-          display: true,
-          ticks: {
-            color: "rgba(255,255,255,0.3)",
-            font: { size: 7 },
-            maxRotation: 0,
-            autoSkip: false,
-            padding: 1,
-          },
-          grid: { display: false },
-          border: { display: false },
+          display:true,
+          ticks:{color:"rgba(255,255,255,0.3)",font:{size:7},maxRotation:0,autoSkip:false,padding:1},
+          grid:{display:false},
+          border:{display:false},
         },
-        y: { display: false, beginAtZero: true, max: maxVal * 1.1 }
+        y:{display:false, beginAtZero:true, max:maxVal*1.1}
       },
-      animation: { duration: 500, easing: "easeOutQuart" }
+      animation:{duration:500,easing:"easeOutQuart"}
     }
   });
 }
