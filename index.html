@@ -864,9 +864,13 @@ async function refreshRate() {
 }
 
 // ── Auto-rollover: net worth bulan kemarin → income bulan ini ──
+// Hanya berlaku untuk bulan yang sudah dimulai (≤ bulan saat ini).
+// Future months tetap 0 sampai tanggal 1 bulan tersebut tiba.
 function processRollover(data) {
   if (!data?.months) return;
+  const todayMonth = new Date().getMonth();  // 0-based: 0=Jan, 11=Dec
   for (let i = 1; i < MONTHS.length; i++) {
+    if (i > todayMonth) continue;  // bulan belum dimulai → skip rollover
     const prev = data.months[MONTHS[i - 1]];
     const cur  = data.months[MONTHS[i]];
     if (!prev || !cur) continue;
