@@ -32,8 +32,12 @@ ALLOWED_UID  = int(os.getenv("ALLOWED_USER_ID", "0"))
 SYNC_SECRET  = os.getenv("SYNC_SECRET", "ganti_ini_dengan_string_acak")
 PORT        = int(os.getenv("PORT", 8080))
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH     = os.path.join(_SCRIPT_DIR, "transactions.db")
+# CLOUD_MODE=1 → bot tidak coba tulis Excel & tidak git push (laptop yang lakukan via sync_to_excel.py)
+# Auto-detect: kalau path Excel tidak ada (mis. cloud Linux), anggap CLOUD_MODE.
 EXCEL_PATH  = os.getenv("EXCEL_PATH", r"C:\Claude\Project\Financial\Financial Management.xlsx")
+CLOUD_MODE  = os.getenv("CLOUD_MODE", "0") == "1" or not os.path.exists(EXCEL_PATH)
+# DB_PATH bisa di-override ke /data/transactions.db untuk persistent storage di HF Spaces
+DB_PATH     = os.getenv("DB_PATH", os.path.join(_SCRIPT_DIR, "transactions.db"))
 _NTD_FMT    = '_-"NT$ "* #,##0.00_-;\\-"NT$ "* #,##0.00_-;_-"NT$ "* "-"??_-;_-@_-'
 _NO_WIN     = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _SYNC_LOCK  = threading.Lock()
@@ -54,6 +58,9 @@ def db_connect():
     return con
 
 def db_init():
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
     con = db_connect()
     con.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
@@ -135,6 +142,8 @@ def db_delete_last() -> dict | None:
 
 def excel_delete_tx(tx: dict) -> bool:
     """Hapus baris di Excel yang cocok dengan tx. Return True jika berhasil ditemukan dan dihapus."""
+    if CLOUD_MODE:
+        return False  # cloud tidak punya Excel — laptop akan re-sync via /pending
     import openpyxl
     excel_path = os.getenv("EXCEL_PATH", r"C:\Claude\Project\Financial\Financial Management.xlsx")
     if not os.path.exists(excel_path):
@@ -182,6 +191,8 @@ def _find_next_row(ws):
     return None
 
 def _export_and_push():
+    if CLOUD_MODE:
+        return  # cloud tidak punya Excel/git creds — laptop yang push data.json
     try:
         from export_json import export
         export()
@@ -201,6 +212,8 @@ def _export_and_push():
 
 def immediate_sync():
     """Tulis pending transactions ke Excel, export JSON, push. Dijalankan di thread terpisah."""
+    if CLOUD_MODE:
+        return  # laptop akan poll /pending dan tulis Excel sendiri
     if not _SYNC_LOCK.acquire(blocking=False):
         return  # sync lain sedang berjalan
     try:
@@ -1025,6 +1038,7 @@ def build_app():
 
 def main():
     import time as _time
+    log.info("Mode: %s | DB: %s | PORT: %d", "CLOUD" if CLOUD_MODE else "LOCAL", DB_PATH, PORT)
     db_init()
 
     t = threading.Thread(target=start_http_server, daemon=True)
