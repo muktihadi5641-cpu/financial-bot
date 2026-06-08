@@ -302,6 +302,15 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .nav-item.active .nav-icon{background:rgba(29,78,216,0.1);transform:scale(1.1)}
 .nav-label{letter-spacing:.3px}
 
+/* ── Proyeksi milestone — pakai .card design dari Dashboard ── */
+.proyeksi-title{font-size:14px;font-weight:700;color:var(--text);margin:4px 2px 12px;display:flex;align-items:center;gap:6px}
+.card.milestone::before{background:var(--savings)}
+.card.milestone .card-label{color:var(--savings)}
+.card.milestone .card-icon{background:linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%)}
+.card.milestone.done::before{background:var(--income)}
+.card.milestone.done .card-label{color:var(--income)}
+.card.milestone.done .card-icon{background:linear-gradient(135deg,#F0FDF4 0%,#DCFCE7 100%)}
+
 /* ── Savings Page ─────────────────────────────────────────── */
 .sav-header{
   background:linear-gradient(160deg,#0a1628 0%,#1a3a2a 45%,#16A34A 100%);
@@ -1332,7 +1341,32 @@ function renderSavingsPage() {
   const idrEta = idrAlloc > 0 ? Math.ceil(idrRemaining / idrAlloc) : '\u221E';
   const R = 44, C = 2 * Math.PI * R;
 
+  // Proyeksi milestone — pakai .card design seperti Dashboard
+  const efNtdGoal = goals.find(g => g.id === 'ef-ntd-3m');
+  const efIdrGoal = goals.find(g => g.id === 'ef-idr-3m');
+  const projNtdStart  = efNtdGoal ? efNtdGoal.current : 0;
+  const projIdrStart  = efIdrGoal ? efIdrGoal.current : 0;
+  const projNtdTarget = MONTHLY_EXPENSE.ntd * 3;
+  const projIdrTarget = MONTHLY_EXPENSE.idr * 3;
+  const projNtdMonthly = MONTHLY_SURPLUS.ntd * 0.6;
+  const projIdrMonthly = MONTHLY_SURPLUS.idr * 0.6;
+  const milestoneCards = [3, 6, 9, 12].map(m => {
+    const ntd = Math.min(projNtdTarget, projNtdStart + projNtdMonthly * m);
+    const idr = Math.min(projIdrTarget, projIdrStart + projIdrMonthly * m);
+    const done = ntd >= projNtdTarget && idr >= projIdrTarget;
+    return `
+      <div class="card milestone${done ? ' done' : ''}">
+        <div class="card-icon">${done ? '✅' : '\u{1F4C5}'}</div>
+        <div class="card-label">Bulan ${m}</div>
+        <div class="card-ntd">${fmtNTD(ntd)}</div>
+        <div class="card-idr">${fmtIDR(idr)}</div>
+      </div>`;
+  }).join('');
+
   const html = `
+    <div class="proyeksi-title">\u{1F4C5} Proyeksi Dana Darurat</div>
+    <div class="cards">${milestoneCards}</div>
+
     <div class="ef-grid">
       <div class="ef-card ntd">
         <div class="ef-card-label">\u{1F1F9}\u{1F1FC} NTD Emergency Fund</div>
