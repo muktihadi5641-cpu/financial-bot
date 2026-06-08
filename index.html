@@ -531,6 +531,8 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .sim-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
 .sim-results{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 @media(min-width:640px){.sim-results{grid-template-columns:repeat(4,1fr)}}
+.sim-chart-wrap{position:relative;height:130px;margin-bottom:16px}
+.sim-chart-wrap canvas{width:100%!important;height:100%!important}
 .disclaimer{
   background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;
   padding:12px 14px;font-size:11px;color:#92400E;line-height:1.5;
@@ -1535,6 +1537,8 @@ const ID_FUNDS = [
 ];
 
 let portfolioChartInstance = null;
+let simChartInstance = null;
+
 function renderInvestPage() {
   const surplusInvest = { ntd: MONTHLY_SURPLUS.ntd * 0.4, idr: MONTHLY_SURPLUS.idr * 0.4 };
   const html = `
@@ -1554,6 +1558,7 @@ function renderInvestPage() {
       <div class="sim-title">\u{1F9EE} Investment Simulator</div>
       <div class="sim-subtitle">Proyeksi pertumbuhan investasi dengan compound interest</div>
       <div class="sim-results" id="sim-results"></div>
+      <div class="sim-chart-wrap"><canvas id="sim-chart"></canvas></div>
       <div class="sim-controls">
         <div class="sim-control"><label>Investasi per Bulan <span class="sim-val" id="sim-amount-val">${fmtNTD(surplusInvest.ntd)}</span></label><input type="range" class="sim-slider" id="sim-amount" min="500" max="10000" step="500" value="${surplusInvest.ntd}"></div>
         <div class="sim-control"><label>Expected Return per Tahun <span class="sim-val" id="sim-return-val">8%</span></label><input type="range" class="sim-slider" id="sim-return" min="3" max="15" step="1" value="8"></div>
@@ -1659,6 +1664,41 @@ function updateSimulator() {
       </div>`;
   }).join('');
   document.getElementById('sim-results').innerHTML = resultsHTML;
+
+  // Mini line chart pendamping (compact, height 130 dari CSS)
+  const dataDep = [], dataVal = [], labels = [];
+  for (let y = 0; y <= years; y++) {
+    labels.push(y === 0 ? '0' : y + 'y');
+    const m = y * 12;
+    dataDep.push(amount * m);
+    dataVal.push(m === 0 ? 0 : amount * ((Math.pow(1 + monthlyRate, m) - 1) / monthlyRate));
+  }
+  const canvas = document.getElementById('sim-chart');
+  if (!canvas) return;
+  if (simChartInstance) { simChartInstance.destroy(); simChartInstance = null; }
+  const cctx = canvas.getContext('2d');
+  const h = canvas.offsetHeight || 130;
+  const gV = cctx.createLinearGradient(0,0,0,h); gV.addColorStop(0,'rgba(217,119,6,0.30)'); gV.addColorStop(1,'rgba(217,119,6,0.02)');
+  simChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets: [
+      { label: 'Nilai', data: dataVal, borderColor: '#D97706', backgroundColor: gV, fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2 },
+      { label: 'Setoran', data: dataDep, borderColor: 'rgba(148,163,184,0.7)', backgroundColor: 'transparent', fill: false, tension: 0, pointRadius: 0, borderWidth: 1.2, borderDash: [4,3] }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: 'rgba(15,23,42,0.96)', titleFont: { size: 11, weight: '700' }, bodyFont: { size: 11 }, padding: 8, cornerRadius: 8, callbacks: { label: c => '  ' + c.dataset.label + ': ' + fmtNTD(c.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(100,116,139,0.7)', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+        y: { display: false, beginAtZero: true }
+      },
+      animation: { duration: 400, easing: 'easeOutQuart' }
+    }
+  });
 }
 
 function startDashboard() {
