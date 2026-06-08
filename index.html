@@ -392,23 +392,6 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .goal-progress-text{font-size:11px;color:var(--sub)}
 .goal-progress-text b{color:var(--text)}
 .goal-pct{font-size:12px;font-weight:700}
-.timeline-card{
-  background:var(--card);border-radius:var(--radius);
-  padding:16px 14px;box-shadow:var(--shadow);margin-bottom:20px;
-}
-.timeline-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px}
-.timeline-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.tl-cell{background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;position:relative;overflow:hidden}
-.tl-cell.done{background:linear-gradient(180deg,#F0FDF4 0%,#DCFCE7 100%);border-color:#86EFAC}
-.tl-cell-label{font-size:10px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
-.tl-cell-ntd{font-size:13px;font-weight:700;color:var(--income);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;line-height:1.2}
-.tl-cell-idr{font-size:11px;color:var(--savings);margin-top:3px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;line-height:1.2}
-.tl-cell-check{position:absolute;top:4px;right:5px;font-size:10px;color:var(--income)}
-.tl-legend{display:flex;justify-content:space-between;font-size:10px;color:var(--sub);margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)}
-.tl-legend-item{display:flex;align-items:center;gap:5px}
-.tl-legend-dot{width:8px;height:8px;border-radius:50%}
-.tl-legend-dot.ntd{background:var(--income)}
-.tl-legend-dot.idr{background:var(--savings)}
 
 /* ── Investment Page ──────────────────────────────────────── */
 .inv-header{
@@ -1438,40 +1421,8 @@ function renderSavingsPage() {
       }).join('')}
     </div>
 
-    <div class="timeline-card" style="margin-top:20px">
-      <div class="timeline-title">\u{1F4C5} Proyeksi Dana Darurat</div>
-      <div class="timeline-grid">${renderTimelineMilestones(goals)}</div>
-      <div class="tl-legend">
-        <div class="tl-legend-item"><span class="tl-legend-dot ntd"></span>NTD (target ${shortNTD(MONTHLY_EXPENSE.ntd * 3)})</div>
-        <div class="tl-legend-item"><span class="tl-legend-dot idr"></span>IDR (target ${shortIDR(MONTHLY_EXPENSE.idr * 3)})</div>
-      </div>
-    </div>
   `;
   document.getElementById('sav-content').innerHTML = html;
-}
-
-function renderTimelineMilestones(goals) {
-  const ntdGoal   = goals.find(g => g.id === 'ef-ntd-3m');
-  const idrGoal   = goals.find(g => g.id === 'ef-idr-3m');
-  const ntdStart  = ntdGoal ? ntdGoal.current : 0;
-  const idrStart  = idrGoal ? idrGoal.current : 0;
-  const ntdMonthly = MONTHLY_SURPLUS.ntd * 0.6;
-  const idrMonthly = MONTHLY_SURPLUS.idr * 0.6;
-  const ntdTarget = MONTHLY_EXPENSE.ntd * 3;
-  const idrTarget = MONTHLY_EXPENSE.idr * 3;
-  // 4 cek-point: 3, 6, 9, 12 bulan
-  return [3, 6, 9, 12].map(m => {
-    const ntd = Math.min(ntdTarget, ntdStart + ntdMonthly * m);
-    const idr = Math.min(idrTarget, idrStart + idrMonthly * m);
-    const both = ntd >= ntdTarget && idr >= idrTarget;
-    return `
-      <div class="tl-cell${both ? ' done' : ''}">
-        ${both ? '<span class="tl-cell-check">✓</span>' : ''}
-        <div class="tl-cell-label">Bln ${m}</div>
-        <div class="tl-cell-ntd">${shortNTD(ntd)}</div>
-        <div class="tl-cell-idr">${shortIDR(idr)}</div>
-      </div>`;
-  }).join('');
 }
 
 // Goal CRUD
