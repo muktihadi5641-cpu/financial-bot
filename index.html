@@ -310,6 +310,11 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 .card.milestone.done::before{background:var(--income)}
 .card.milestone.done .card-label{color:var(--income)}
 .card.milestone.done .card-icon{background:linear-gradient(135deg,#F0FDF4 0%,#DCFCE7 100%)}
+/* Investment milestone (amber/invest theme) */
+.card.sim-milestone::before{background:var(--invest)}
+.card.sim-milestone .card-label{color:var(--invest)}
+.card.sim-milestone .card-icon{background:linear-gradient(135deg,#FFFBEB 0%,#FEF3C7 100%)}
+.card.sim-milestone .sim-gain{font-size:11px;font-weight:600;color:var(--income);margin-top:4px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
 /* ── Savings Page ─────────────────────────────────────────── */
 .sav-header{
@@ -524,11 +529,8 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   transition:transform .12s;
 }
 .sim-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
-.sim-results{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
-.sim-result{background:var(--bg);border-radius:12px;padding:12px 8px;text-align:center}
-.sim-result-val{font-size:14px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;margin-bottom:2px}
-.sim-result-lbl{font-size:9px;color:var(--sub);text-transform:uppercase;letter-spacing:.3px}
-.sim-result-gain{font-size:10px;font-weight:600;color:var(--income);margin-top:2px}
+.sim-results{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(min-width:640px){.sim-results{grid-template-columns:repeat(4,1fr)}}
 .disclaimer{
   background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;
   padding:12px 14px;font-size:11px;color:#92400E;line-height:1.5;
@@ -572,7 +574,6 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   .ef-grid{grid-template-columns:1fr}
   .sector-grid{grid-template-columns:1fr}
   .profile-grid{grid-template-columns:1fr 1fr}
-  .sim-results{grid-template-columns:1fr 1fr}
   .port-chart-wrap{grid-template-columns:1fr}
   .profile-stat-val{font-size:13px}
 }
@@ -1534,8 +1535,6 @@ const ID_FUNDS = [
 ];
 
 let portfolioChartInstance = null;
-let simChartInstance = null;
-
 function renderInvestPage() {
   const surplusInvest = { ntd: MONTHLY_SURPLUS.ntd * 0.4, idr: MONTHLY_SURPLUS.idr * 0.4 };
   const html = `
@@ -1549,6 +1548,17 @@ function renderInvestPage() {
         <div class="profile-stat"><div class="profile-stat-val" style="color:#FBBF24">${fmtNTD(surplusInvest.ntd)}</div><div class="profile-stat-lbl">Investable/bln</div></div>
       </div>
       <div class="risk-badge-wrap"><span class="risk-badge conservative">\u{1F6E1}\uFE0F Conservative \u2014 Mahasiswa</span></div>
+    </div>
+
+    <div class="sim-card">
+      <div class="sim-title">\u{1F9EE} Investment Simulator</div>
+      <div class="sim-subtitle">Proyeksi pertumbuhan investasi dengan compound interest</div>
+      <div class="sim-results" id="sim-results"></div>
+      <div class="sim-controls">
+        <div class="sim-control"><label>Investasi per Bulan <span class="sim-val" id="sim-amount-val">${fmtNTD(surplusInvest.ntd)}</span></label><input type="range" class="sim-slider" id="sim-amount" min="500" max="10000" step="500" value="${surplusInvest.ntd}"></div>
+        <div class="sim-control"><label>Expected Return per Tahun <span class="sim-val" id="sim-return-val">8%</span></label><input type="range" class="sim-slider" id="sim-return" min="3" max="15" step="1" value="8"></div>
+        <div class="sim-control"><label>Durasi Investasi <span class="sim-val" id="sim-years-val">10 tahun</span></label><input type="range" class="sim-slider" id="sim-years" min="1" max="30" step="1" value="10"></div>
+      </div>
     </div>
 
     <div class="sector-title">\u{1F525} Sektor yang Sedang Bagus (2026)</div>
@@ -1597,17 +1607,6 @@ function renderInvestPage() {
       </div>
     </div>
 
-    <div class="sim-card">
-      <div class="sim-title">\u{1F9EE} Investment Simulator</div>
-      <div class="sim-subtitle">Lihat proyeksi pertumbuhan investasi dengan compound interest</div>
-      <div class="sim-controls">
-        <div class="sim-control"><label>Investasi per Bulan <span class="sim-val" id="sim-amount-val">${fmtNTD(surplusInvest.ntd)}</span></label><input type="range" class="sim-slider" id="sim-amount" min="500" max="10000" step="500" value="${surplusInvest.ntd}"></div>
-        <div class="sim-control"><label>Expected Return per Tahun <span class="sim-val" id="sim-return-val">8%</span></label><input type="range" class="sim-slider" id="sim-return" min="3" max="15" step="1" value="8"></div>
-        <div class="sim-control"><label>Durasi Investasi <span class="sim-val" id="sim-years-val">10 tahun</span></label><input type="range" class="sim-slider" id="sim-years" min="1" max="30" step="1" value="10"></div>
-      </div>
-      <div class="sim-results" id="sim-results"></div>
-      <canvas id="sim-chart" height="220"></canvas>
-    </div>
   `;
   document.getElementById('inv-content').innerHTML = html;
   ['sim-amount','sim-return','sim-years'].forEach(id => { document.getElementById(id).oninput = updateSimulator; });
@@ -1644,55 +1643,22 @@ function updateSimulator() {
   document.getElementById('sim-return-val').textContent = Math.round(annualReturn * 100) + '%';
   document.getElementById('sim-years-val').textContent = years + ' tahun';
   const monthlyRate = annualReturn / 12;
-  const totalMonths = years * 12;
+  // 4 milestones tetap (1Y / 3Y / 5Y / N Y), unik & ≤ years
   const milestones = [1, 3, 5, years].filter((v, i, a) => a.indexOf(v) === i && v <= years);
   const resultsHTML = milestones.map(y => {
     const m = y * 12;
     const dep = amount * m;
     const val = amount * ((Math.pow(1 + monthlyRate, m) - 1) / monthlyRate);
-    const g = val - dep;
-    return `<div class="sim-result"><div class="sim-result-val">${shortNTD(val)}</div><div class="sim-result-lbl">${y} Tahun</div><div class="sim-result-gain">+${shortNTD(g)}</div></div>`;
+    const gain = val - dep;
+    return `
+      <div class="card sim-milestone">
+        <div class="card-icon">⏱️</div>
+        <div class="card-label">${y} Tahun</div>
+        <div class="card-ntd">${fmtNTD(val)}</div>
+        <div class="sim-gain">+ ${fmtNTD(gain)}</div>
+      </div>`;
   }).join('');
   document.getElementById('sim-results').innerHTML = resultsHTML;
-
-  const dataDeposit = [], dataGrowth = [], labels = [];
-  for (let y = 0; y <= years; y++) {
-    labels.push(y === 0 ? 'Start' : y + 'Y');
-    const m = y * 12;
-    const dep = amount * m;
-    const val = m === 0 ? 0 : amount * ((Math.pow(1 + monthlyRate, m) - 1) / monthlyRate);
-    dataDeposit.push(dep); dataGrowth.push(val);
-  }
-  const canvas = document.getElementById('sim-chart');
-  if (!canvas) return;
-  if (simChartInstance) { simChartInstance.destroy(); simChartInstance = null; }
-  const ctx = canvas.getContext('2d');
-  const h = canvas.offsetHeight || 220;
-  const gradG = ctx.createLinearGradient(0, 0, 0, h); gradG.addColorStop(0, 'rgba(124,58,237,0.15)'); gradG.addColorStop(1, 'rgba(124,58,237,0.02)');
-  const gradD = ctx.createLinearGradient(0, 0, 0, h); gradD.addColorStop(0, 'rgba(148,163,184,0.12)'); gradD.addColorStop(1, 'rgba(148,163,184,0.02)');
-  simChartInstance = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Nilai Investasi', data: dataGrowth, borderColor: '#7C3AED', backgroundColor: gradG, fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: '#7C3AED', borderWidth: 2.5 },
-        { label: 'Total Setoran', data: dataDeposit, borderColor: '#94A3B8', backgroundColor: gradD, fill: true, tension: 0, pointRadius: 2, pointBackgroundColor: '#94A3B8', borderWidth: 1.5, borderDash: [4, 3] }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: true, position: 'bottom', labels: { font: { size: 11 }, padding: 16 } },
-        tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', titleFont: { size: 12, weight: '700' }, bodyFont: { size: 11 }, padding: 12, cornerRadius: 10, callbacks: { label: ctx => '  ' + ctx.dataset.label + ': ' + fmtNTD(ctx.raw) } }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 }, callback: v => shortNTD(v) } }
-      },
-      animation: { duration: 600, easing: 'easeOutQuart' }
-    }
-  });
 }
 
 function startDashboard() {
