@@ -30,7 +30,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--text);min-height:100vh;padding-bottom:32px}
+body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--text);min-height:100vh;padding-bottom:80px}
 
 /* ── Header ──────────────────────────────────────────────── */
 .header{
@@ -266,11 +266,318 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
   .card-ntd{font-size:20px}
   .card-idr{font-size:14px}
 }
+/* ── Page System ──────────────────────────────────────────── */
+.page{display:none;min-height:100vh}
+.page.active{display:block;animation:pageFadeIn .35s ease}
+@keyframes pageFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Bottom Navigation ────────────────────────────────────── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(255,255,255,0.88);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid rgba(0,0,0,0.06);
+  display:flex;justify-content:center;gap:0;
+  z-index:100;
+  padding:6px 0 max(6px,env(safe-area-inset-bottom));
+  box-shadow:0 -4px 24px rgba(0,0,0,0.06);
+}
+.nav-item{
+  flex:1;max-width:120px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 0 4px;
+  font-size:10px;font-weight:600;color:#94A3B8;
+  cursor:pointer;transition:color .2s;
+  -webkit-tap-highlight-color:transparent;
+  border:none;background:none;
+}
+.nav-item:hover{color:#64748B}
+.nav-item.active{color:var(--primary2)}
+.nav-icon{
+  width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:10px;font-size:18px;
+  transition:background .2s,transform .15s;
+}
+.nav-item.active .nav-icon{background:rgba(29,78,216,0.1);transform:scale(1.1)}
+.nav-label{letter-spacing:.3px}
+
+/* ── Savings Page ─────────────────────────────────────────── */
+.sav-header{
+  background:linear-gradient(160deg,#0a1628 0%,#1a3a2a 45%,#16A34A 100%);
+  padding:28px 20px 24px;position:relative;overflow:hidden;
+}
+.sav-header::before{
+  content:'';position:absolute;right:-60px;top:-60px;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(74,222,128,0.2) 0%,transparent 70%);
+}
+.sav-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;position:relative;z-index:1}
+.sav-subtitle{font-size:12px;color:rgba(255,255,255,0.55);letter-spacing:.3px;position:relative;z-index:1}
+.sav-content{max-width:900px;margin:0 auto;padding:20px 16px 0}
+.ef-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.ef-card{
+  background:var(--card);border-radius:var(--radius);
+  padding:20px 16px;box-shadow:var(--shadow);
+  text-align:center;position:relative;overflow:hidden;
+}
+.ef-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.ef-card.ntd::before{background:linear-gradient(90deg,#16A34A,#4ADE80)}
+.ef-card.idr::before{background:linear-gradient(90deg,#2563EB,#60A5FA)}
+.ef-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);margin-bottom:14px}
+.progress-ring-wrap{position:relative;width:110px;height:110px;margin:0 auto 12px}
+.progress-ring{transform:rotate(-90deg)}
+.progress-ring-bg{fill:none;stroke:#E2E8F0;stroke-width:8}
+.progress-ring-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)}
+.progress-ring-text{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;
+}
+.progress-pct{font-size:22px;font-weight:800;color:var(--text);line-height:1}
+.progress-lbl{font-size:9px;color:var(--sub);margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+.ef-amounts{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.ef-target{font-size:11px;color:var(--sub)}
+.ef-eta{font-size:10px;color:var(--income);font-weight:600;margin-top:8px;padding:4px 10px;background:rgba(22,163,74,0.08);border-radius:10px;display:inline-block}
+.alloc-card{
+  background:var(--card);border-radius:var(--radius);
+  padding:18px 16px;box-shadow:var(--shadow);margin-bottom:20px;
+}
+.alloc-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.alloc-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.alloc-row:last-child{border-bottom:none}
+.alloc-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.alloc-icon.ef{background:linear-gradient(135deg,#F0FDF4,#DCFCE7)}
+.alloc-icon.inv{background:linear-gradient(135deg,#EFF6FF,#DBEAFE)}
+.alloc-icon.save{background:linear-gradient(135deg,#FFFBEB,#FEF3C7)}
+.alloc-info{flex:1}
+.alloc-name{font-size:12px;font-weight:600;color:var(--text)}
+.alloc-desc{font-size:10px;color:var(--sub);margin-top:1px}
+.alloc-val{font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.alloc-pct{font-size:10px;color:var(--sub)}
+.goals-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.goals-title{font-size:15px;font-weight:700;color:var(--text)}
+.add-goal-btn{
+  display:flex;align-items:center;gap:4px;
+  padding:6px 14px;border-radius:20px;
+  background:var(--primary2);color:#fff;
+  font-size:11px;font-weight:600;border:none;cursor:pointer;
+  transition:transform .12s,box-shadow .15s;
+}
+.add-goal-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(29,78,216,0.3)}
+.add-goal-btn:active{transform:scale(.96)}
+.goal-card{
+  background:var(--card);border-radius:14px;
+  padding:16px;box-shadow:var(--shadow);margin-bottom:10px;
+  transition:transform .12s;
+}
+.goal-card:hover{transform:translateY(-1px)}
+.goal-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.goal-icon{font-size:20px}
+.goal-name{font-size:13px;font-weight:700;color:var(--text);flex:1}
+.goal-actions{display:flex;gap:4px}
+.goal-action-btn{
+  width:28px;height:28px;border-radius:8px;border:none;
+  background:var(--bg);cursor:pointer;font-size:12px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.goal-action-btn:hover{background:var(--border)}
+.goal-bar{height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.goal-bar-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.goal-bar-fill.green{background:linear-gradient(90deg,#16A34A,#4ADE80)}
+.goal-bar-fill.blue{background:linear-gradient(90deg,#2563EB,#60A5FA)}
+.goal-bar-fill.amber{background:linear-gradient(90deg,#D97706,#FBBF24)}
+.goal-bar-fill.purple{background:linear-gradient(90deg,#7C3AED,#A78BFA)}
+.goal-bottom{display:flex;justify-content:space-between;align-items:center}
+.goal-progress-text{font-size:11px;color:var(--sub)}
+.goal-progress-text b{color:var(--text)}
+.goal-pct{font-size:12px;font-weight:700}
+.timeline-card{
+  background:var(--card);border-radius:var(--radius);
+  padding:18px 16px;box-shadow:var(--shadow);margin-bottom:20px;
+}
+.timeline-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px}
+
+/* ── Investment Page ──────────────────────────────────────── */
+.inv-header{
+  background:linear-gradient(160deg,#0a0f28 0%,#1a1a4a 45%,#7C3AED 100%);
+  padding:28px 20px 24px;position:relative;overflow:hidden;
+}
+.inv-header::before{
+  content:'';position:absolute;right:-60px;top:-60px;
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(167,139,250,0.2) 0%,transparent 70%);
+}
+.inv-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;position:relative;z-index:1}
+.inv-subtitle{font-size:12px;color:rgba(255,255,255,0.55);letter-spacing:.3px;position:relative;z-index:1}
+.inv-content{max-width:900px;margin:0 auto;padding:20px 16px 0}
+.profile-card{
+  background:linear-gradient(135deg,#1E293B 0%,#334155 100%);
+  border-radius:var(--radius);padding:20px;margin-bottom:20px;
+  color:#fff;position:relative;overflow:hidden;
+}
+.profile-card::after{
+  content:'';position:absolute;right:-30px;bottom:-30px;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(124,58,237,0.25) 0%,transparent 70%);
+}
+.profile-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,0.5);margin-bottom:12px}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.profile-stat{text-align:center}
+.profile-stat-val{font-size:15px;font-weight:800;margin-bottom:2px;font-variant-numeric:tabular-nums}
+.profile-stat-lbl{font-size:9px;color:rgba(255,255,255,0.55);text-transform:uppercase;letter-spacing:.3px}
+.risk-badge-wrap{display:flex;justify-content:center;margin-top:14px}
+.risk-badge{padding:5px 16px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.4px}
+.risk-badge.conservative{background:rgba(22,163,74,0.15);color:#4ADE80;border:1px solid rgba(74,222,128,0.2)}
+.sector-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px}
+.sector-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.sector-card{
+  background:var(--card);border-radius:14px;padding:16px;
+  box-shadow:var(--shadow);cursor:default;
+  transition:transform .15s,box-shadow .15s;
+  position:relative;overflow:hidden;
+}
+.sector-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.1)}
+.sector-card::after{
+  content:'';position:absolute;bottom:-20px;right:-20px;
+  width:60px;height:60px;border-radius:50%;opacity:0.08;
+}
+.sector-card.ai::after{background:#7C3AED}
+.sector-card.energy::after{background:#D97706}
+.sector-card.health::after{background:#DC2626}
+.sector-card.auto::after{background:#2563EB}
+.sector-emoji{font-size:24px;margin-bottom:8px;display:block}
+.sector-name{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.sector-desc{font-size:10px;color:var(--sub);line-height:1.4}
+.sector-trend{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;margin-top:8px;
+  padding:3px 8px;border-radius:8px;
+}
+.sector-trend.hot{background:rgba(22,163,74,0.1);color:#16A34A}
+.sector-trend.warm{background:rgba(217,119,6,0.1);color:#D97706}
+.rec-section{margin-bottom:20px}
+.rec-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.rec-subtitle{font-size:11px;color:var(--sub);margin-bottom:14px}
+.rec-card{
+  background:var(--card);border-radius:14px;padding:14px 16px;
+  box-shadow:var(--shadow);margin-bottom:10px;
+  display:flex;align-items:center;gap:12px;
+  transition:transform .12s;
+}
+.rec-card:hover{transform:translateY(-1px)}
+.rec-ticker{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:#fff;flex-shrink:0;
+  letter-spacing:-.2px;
+}
+.rec-ticker.tw{background:linear-gradient(135deg,#1E3A8A,#3B82F6)}
+.rec-ticker.id{background:linear-gradient(135deg,#7C3AED,#A78BFA)}
+.rec-info{flex:1;min-width:0}
+.rec-name{font-size:13px;font-weight:700;color:var(--text)}
+.rec-type{font-size:10px;color:var(--sub);margin-top:1px}
+.rec-right{text-align:right;flex-shrink:0}
+.rec-return{font-size:13px;font-weight:700;color:var(--income)}
+.rec-risk{
+  display:inline-block;font-size:9px;font-weight:700;
+  padding:2px 8px;border-radius:6px;margin-top:3px;
+  letter-spacing:.3px;text-transform:uppercase;
+}
+.rec-risk.low{background:rgba(22,163,74,0.1);color:#16A34A}
+.rec-risk.med{background:rgba(217,119,6,0.1);color:#D97706}
+.rec-risk.high{background:rgba(220,38,38,0.1);color:#DC2626}
+.port-card{
+  background:var(--card);border-radius:var(--radius);padding:18px 16px;
+  box-shadow:var(--shadow);margin-bottom:20px;
+}
+.port-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px}
+.port-chart-wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center}
+.port-legend{display:flex;flex-direction:column;gap:6px}
+.port-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sub)}
+.port-legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.port-legend-pct{font-weight:700;color:var(--text);margin-left:auto}
+.sim-card{
+  background:var(--card);border-radius:var(--radius);padding:18px 16px;
+  box-shadow:var(--shadow);margin-bottom:20px;
+}
+.sim-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.sim-subtitle{font-size:11px;color:var(--sub);margin-bottom:16px}
+.sim-controls{display:grid;gap:16px;margin-bottom:16px}
+.sim-control label{display:block;font-size:11px;font-weight:600;color:var(--sub);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.sim-control .sim-val{float:right;color:var(--primary2);font-weight:700;text-transform:none;letter-spacing:0}
+.sim-slider{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:6px;border-radius:3px;
+  background:linear-gradient(90deg,#DBEAFE,var(--primary2));
+  outline:none;
+}
+.sim-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:20px;height:20px;border-radius:50%;
+  background:var(--primary2);cursor:pointer;
+  box-shadow:0 2px 8px rgba(29,78,216,0.3);
+  transition:transform .12s;
+}
+.sim-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.sim-results{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.sim-result{background:var(--bg);border-radius:12px;padding:12px 8px;text-align:center}
+.sim-result-val{font-size:14px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;margin-bottom:2px}
+.sim-result-lbl{font-size:9px;color:var(--sub);text-transform:uppercase;letter-spacing:.3px}
+.sim-result-gain{font-size:10px;font-weight:600;color:var(--income);margin-top:2px}
+.disclaimer{
+  background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;
+  padding:12px 14px;font-size:11px;color:#92400E;line-height:1.5;
+  margin-bottom:20px;
+}
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);
+  z-index:200;display:flex;align-items:center;justify-content:center;
+  padding:20px;animation:modalFadeIn .2s ease;
+}
+@keyframes modalFadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--card);border-radius:20px;padding:24px;
+  width:100%;max-width:400px;
+  box-shadow:0 24px 48px rgba(0,0,0,0.2);
+  animation:modalSlideUp .3s ease;
+}
+@keyframes modalSlideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal-title{font-size:18px;font-weight:800;color:var(--text);margin-bottom:20px}
+.modal-field{margin-bottom:16px}
+.modal-field label{display:block;font-size:11px;font-weight:600;color:var(--sub);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.modal-field input,.modal-field select{
+  width:100%;padding:10px 14px;border:1.5px solid var(--border);
+  border-radius:10px;font-size:14px;color:var(--text);
+  background:var(--bg);outline:none;transition:border-color .15s;
+  box-sizing:border-box;
+}
+.modal-field input:focus,.modal-field select:focus{border-color:var(--primary2)}
+.modal-btns{display:flex;gap:10px;margin-top:20px}
+.modal-btn{
+  flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;
+  border:none;cursor:pointer;transition:transform .12s,box-shadow .15s;
+}
+.modal-btn:active{transform:scale(.97)}
+.modal-btn.primary{background:var(--primary2);color:#fff;box-shadow:0 4px 12px rgba(29,78,216,0.25)}
+.modal-btn.primary:hover{box-shadow:0 6px 16px rgba(29,78,216,0.35)}
+.modal-btn.secondary{background:var(--bg);color:var(--sub)}
+.modal-btn.danger{background:#FEE2E2;color:#DC2626}
+@media(max-width:480px){
+  .ef-grid{grid-template-columns:1fr}
+  .sector-grid{grid-template-columns:1fr}
+  .profile-grid{grid-template-columns:1fr 1fr}
+  .sim-results{grid-template-columns:1fr 1fr}
+  .port-chart-wrap{grid-template-columns:1fr}
+  .profile-stat-val{font-size:13px}
+}
 </style>
 </head>
 <body>
 
 
+<div id="page-dashboard" class="page active">
 <!-- HEADER -->
 <div class="header">
   <div class="daily-chart-box"><canvas id="daily-expense-chart"></canvas></div>
@@ -303,6 +610,41 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI
 <div class="content" id="content">
   <div class="loading"><div class="spinner"></div></div>
 </div>
+</div><!-- /page-dashboard -->
+
+<!-- SAVINGS PAGE -->
+<div id="page-savings" class="page">
+  <div class="sav-header">
+    <div class="sav-title">🎯 Savings Goal Tracker</div>
+    <div class="sav-subtitle">Track your emergency fund &amp; savings goals</div>
+  </div>
+  <div class="sav-content" id="sav-content"></div>
+</div>
+
+<!-- INVEST PAGE -->
+<div id="page-invest" class="page">
+  <div class="inv-header">
+    <div class="inv-title">📈 Investment Hub</div>
+    <div class="inv-subtitle">Sector analysis &amp; recommendations for your profile</div>
+  </div>
+  <div class="inv-content" id="inv-content"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-item active" data-page="dashboard">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">Dashboard</span>
+  </button>
+  <button class="nav-item" data-page="savings">
+    <span class="nav-icon">🎯</span>
+    <span class="nav-label">Savings</span>
+  </button>
+  <button class="nav-item" data-page="invest">
+    <span class="nav-icon">📈</span>
+    <span class="nav-label">Invest</span>
+  </button>
+</nav>
 
 <script>
 const MONTHS = ["January","February","March","April","May","June",
@@ -940,7 +1282,457 @@ function updateClock() {
   document.getElementById("tw-clock").textContent = TW_DATE.format(now) + "  " + TW_TIME.format(now);
 }
 
+// ── Page Navigation ─────────────────────────────────────────
+let currentPage = 'dashboard';
+function switchPage(page) {
+  if (page === currentPage) return;
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
+  if (page === 'dashboard' && allData) setTimeout(() => renderContent(allData), 50);
+  if (page === 'savings') renderSavingsPage();
+  if (page === 'invest') renderInvestPage();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+function initNavigation() {
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => switchPage(btn.dataset.page));
+  });
+}
+
+// ── Savings Goal Tracker ───────────────────────────────────
+const SAVINGS_KEY = 'financial_savings_v2';
+const MONTHLY_EXPENSE = { ntd: 5000, idr: 500000 };
+const MONTHLY_SURPLUS = { ntd: 5000, idr: 400000 };
+const DEFAULT_GOALS = [
+  { id: 'ef-ntd-3m', name: 'Dana Darurat 3 Bulan (NTD)', target: 15000, current: 0, currency: 'ntd', icon: '\u{1F6E1}\uFE0F', color: 'green' },
+  { id: 'ef-idr-3m', name: 'Dana Darurat 3 Bulan (IDR)', target: 1500000, current: 0, currency: 'idr', icon: '\u{1F6E1}\uFE0F', color: 'blue' },
+];
+function loadSavingsData() {
+  try { const r = localStorage.getItem(SAVINGS_KEY); if (r) return JSON.parse(r); } catch {}
+  return { goals: DEFAULT_GOALS.map(g => ({...g})) };
+}
+function saveSavingsData(data) {
+  try { localStorage.setItem(SAVINGS_KEY, JSON.stringify(data)); } catch {}
+}
+
+let timelineChartInstance = null;
+
+function renderSavingsPage() {
+  const data = loadSavingsData();
+  const goals = data.goals;
+  const ntdGoals = goals.filter(g => g.currency === 'ntd');
+  const idrGoals = goals.filter(g => g.currency === 'idr');
+  const ntdCurrent = ntdGoals.reduce((s, g) => s + g.current, 0);
+  const ntdTarget = ntdGoals.length > 0 ? ntdGoals.reduce((s, g) => s + g.target, 0) : MONTHLY_EXPENSE.ntd * 3;
+  const idrCurrent = idrGoals.reduce((s, g) => s + g.current, 0);
+  const idrTarget = idrGoals.length > 0 ? idrGoals.reduce((s, g) => s + g.target, 0) : MONTHLY_EXPENSE.idr * 3;
+  const ntdPct = ntdTarget > 0 ? Math.min(100, Math.round((ntdCurrent / ntdTarget) * 100)) : 0;
+  const idrPct = idrTarget > 0 ? Math.min(100, Math.round((idrCurrent / idrTarget) * 100)) : 0;
+  const ntdRemaining = Math.max(0, ntdTarget - ntdCurrent);
+  const idrRemaining = Math.max(0, idrTarget - idrCurrent);
+  const ntdAlloc = MONTHLY_SURPLUS.ntd * 0.6;
+  const idrAlloc = MONTHLY_SURPLUS.idr * 0.6;
+  const ntdEta = ntdAlloc > 0 ? Math.ceil(ntdRemaining / ntdAlloc) : '\u221E';
+  const idrEta = idrAlloc > 0 ? Math.ceil(idrRemaining / idrAlloc) : '\u221E';
+  const R = 44, C = 2 * Math.PI * R;
+
+  const html = `
+    <div class="ef-grid">
+      <div class="ef-card ntd">
+        <div class="ef-card-label">\u{1F1F9}\u{1F1FC} NTD Emergency Fund</div>
+        <div class="progress-ring-wrap">
+          <svg class="progress-ring" viewBox="0 0 100 100" width="110" height="110">
+            <circle class="progress-ring-bg" cx="50" cy="50" r="${R}"/>
+            <circle class="progress-ring-fill" cx="50" cy="50" r="${R}"
+              stroke="#16A34A" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${(C - (C * ntdPct / 100)).toFixed(2)}"/>
+          </svg>
+          <div class="progress-ring-text">
+            <div class="progress-pct">${ntdPct}%</div>
+            <div class="progress-lbl">tercapai</div>
+          </div>
+        </div>
+        <div class="ef-amounts">${fmtNTD(ntdCurrent)} / ${fmtNTD(ntdTarget)}</div>
+        <div class="ef-target">Target: ${Math.round(ntdTarget / MONTHLY_EXPENSE.ntd)} bulan pengeluaran</div>
+        ${ntdPct < 100 ? `<div class="ef-eta">\u23F1 ~${ntdEta} bulan lagi</div>` : '<div class="ef-eta">\u2705 Tercapai!</div>'}
+      </div>
+      <div class="ef-card idr">
+        <div class="ef-card-label">\u{1F1EE}\u{1F1E9} IDR Emergency Fund</div>
+        <div class="progress-ring-wrap">
+          <svg class="progress-ring" viewBox="0 0 100 100" width="110" height="110">
+            <circle class="progress-ring-bg" cx="50" cy="50" r="${R}"/>
+            <circle class="progress-ring-fill" cx="50" cy="50" r="${R}"
+              stroke="#2563EB" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${(C - (C * idrPct / 100)).toFixed(2)}"/>
+          </svg>
+          <div class="progress-ring-text">
+            <div class="progress-pct">${idrPct}%</div>
+            <div class="progress-lbl">tercapai</div>
+          </div>
+        </div>
+        <div class="ef-amounts">${fmtIDR(idrCurrent)} / ${fmtIDR(idrTarget)}</div>
+        <div class="ef-target">Target: ${Math.round(idrTarget / MONTHLY_EXPENSE.idr)} bulan pengeluaran</div>
+        ${idrPct < 100 ? `<div class="ef-eta">\u23F1 ~${idrEta} bulan lagi</div>` : '<div class="ef-eta">\u2705 Tercapai!</div>'}
+      </div>
+    </div>
+
+    <div class="alloc-card">
+      <div class="alloc-title">\u{1F4A1} Rekomendasi Alokasi Bulanan</div>
+      <div class="alloc-row">
+        <div class="alloc-icon ef">\u{1F6E1}\uFE0F</div>
+        <div class="alloc-info"><div class="alloc-name">Dana Darurat (NTD)</div><div class="alloc-desc">60% dari surplus NTD</div></div>
+        <div style="text-align:right"><div class="alloc-val">${fmtNTD(MONTHLY_SURPLUS.ntd * 0.6)}</div><div class="alloc-pct">60%</div></div>
+      </div>
+      <div class="alloc-row">
+        <div class="alloc-icon inv">\u{1F4C8}</div>
+        <div class="alloc-info"><div class="alloc-name">Investasi (NTD)</div><div class="alloc-desc">40% dari surplus NTD</div></div>
+        <div style="text-align:right"><div class="alloc-val">${fmtNTD(MONTHLY_SURPLUS.ntd * 0.4)}</div><div class="alloc-pct">40%</div></div>
+      </div>
+      <div class="alloc-row">
+        <div class="alloc-icon ef">\u{1F6E1}\uFE0F</div>
+        <div class="alloc-info"><div class="alloc-name">Dana Darurat (IDR)</div><div class="alloc-desc">60% dari surplus IDR</div></div>
+        <div style="text-align:right"><div class="alloc-val">${fmtIDR(MONTHLY_SURPLUS.idr * 0.6)}</div><div class="alloc-pct">60%</div></div>
+      </div>
+      <div class="alloc-row">
+        <div class="alloc-icon save">\u{1F4B0}</div>
+        <div class="alloc-info"><div class="alloc-name">Simpan / Invest (IDR)</div><div class="alloc-desc">40% dari surplus IDR</div></div>
+        <div style="text-align:right"><div class="alloc-val">${fmtIDR(MONTHLY_SURPLUS.idr * 0.4)}</div><div class="alloc-pct">40%</div></div>
+      </div>
+    </div>
+
+    <div class="goals-header">
+      <div class="goals-title">\u{1F3AF} Savings Goals</div>
+      <button class="add-goal-btn" onclick="showGoalModal()">+ Tambah Goal</button>
+    </div>
+    <div id="goals-list">
+      ${goals.map(g => {
+        const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
+        const fmt = g.currency === 'ntd' ? fmtNTD : fmtIDR;
+        return `
+        <div class="goal-card">
+          <div class="goal-top">
+            <span class="goal-icon">${g.icon}</span>
+            <span class="goal-name">${g.name}</span>
+            <div class="goal-actions">
+              <button class="goal-action-btn" onclick="showEditGoalModal('${g.id}')" title="Edit">\u270F\uFE0F</button>
+              <button class="goal-action-btn" onclick="deleteGoal('${g.id}')" title="Hapus">\u{1F5D1}\uFE0F</button>
+            </div>
+          </div>
+          <div class="goal-bar"><div class="goal-bar-fill ${g.color}" style="width:${pct}%"></div></div>
+          <div class="goal-bottom">
+            <span class="goal-progress-text"><b>${fmt(g.current)}</b> / ${fmt(g.target)}</span>
+            <span class="goal-pct" style="color:${pct >= 100 ? 'var(--income)' : pct > 50 ? 'var(--invest)' : 'var(--sub)'}">${pct}%</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="timeline-card" style="margin-top:20px">
+      <div class="timeline-title">\u{1F4C5} Proyeksi Dana Darurat</div>
+      <canvas id="timeline-chart" height="200"></canvas>
+    </div>
+  `;
+  document.getElementById('sav-content').innerHTML = html;
+  setTimeout(() => drawTimelineChart(goals), 100);
+}
+
+function drawTimelineChart(goals) {
+  const canvas = document.getElementById('timeline-chart');
+  if (!canvas) return;
+  if (timelineChartInstance) { timelineChartInstance.destroy(); timelineChartInstance = null; }
+  const months = 12;
+  const labels = Array.from({length: months + 1}, (_, i) => 'Bln ' + i);
+  const ntdMonthly = MONTHLY_SURPLUS.ntd * 0.6;
+  const ntdTarget = MONTHLY_EXPENSE.ntd * 3;
+  const ntdGoal = goals.find(g => g.id === 'ef-ntd-3m');
+  const ntdStart = ntdGoal ? ntdGoal.current : 0;
+  const ntdData = Array.from({length: months + 1}, (_, i) => Math.min(ntdTarget, ntdStart + ntdMonthly * i));
+  const idrMonthly = MONTHLY_SURPLUS.idr * 0.6;
+  const idrTarget = MONTHLY_EXPENSE.idr * 3;
+  const idrGoal = goals.find(g => g.id === 'ef-idr-3m');
+  const idrStart = idrGoal ? idrGoal.current : 0;
+  const idrData = Array.from({length: months + 1}, (_, i) => Math.min(idrTarget, idrStart + idrMonthly * i));
+
+  timelineChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'NTD Dana Darurat', data: ntdData, borderColor: '#16A34A', backgroundColor: 'rgba(22,163,74,0.08)', fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#16A34A', borderWidth: 2.5 },
+        { label: 'IDR Dana Darurat', data: idrData, borderColor: '#2563EB', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#2563EB', borderWidth: 2.5, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { font: { size: 11 }, padding: 16 } },
+        tooltip: {
+          backgroundColor: 'rgba(15,23,42,0.95)', titleFont: { size: 12, weight: '700' }, bodyFont: { size: 11 }, padding: 12, cornerRadius: 10,
+          callbacks: { label: ctx => ctx.datasetIndex === 0 ? '  ' + fmtNTD(ctx.raw) : '  ' + fmtIDR(ctx.raw) }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { position: 'left', title: { display: true, text: 'NTD', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 }, callback: v => shortNTD(v) }, suggestedMax: ntdTarget * 1.15 },
+        y1: { position: 'right', title: { display: true, text: 'IDR', font: { size: 10 } }, grid: { display: false }, ticks: { font: { size: 10 }, callback: v => shortIDR(v) }, suggestedMax: idrTarget * 1.15 }
+      }
+    },
+    plugins: [{
+      id: 'targetLines',
+      afterDraw(chart) {
+        const { ctx, scales: { y, y1 }, chartArea: area } = chart;
+        [{ scale: y, val: ntdTarget, col: 'rgba(22,163,74,0.4)' }, { scale: y1, val: idrTarget, col: 'rgba(37,99,235,0.4)' }].forEach(({ scale, val, col }) => {
+          const py = scale.getPixelForValue(val);
+          if (py >= area.top && py <= area.bottom) {
+            ctx.save(); ctx.setLineDash([6, 4]); ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(area.left, py); ctx.lineTo(area.right, py); ctx.stroke(); ctx.restore();
+          }
+        });
+      }
+    }]
+  });
+}
+
+// Goal CRUD
+function showGoalModal(goal) {
+  const isEdit = !!goal;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'goal-modal';
+  const icons = ['\u{1F6E1}\uFE0F','\u{1F3AF}','\u{1F4B0}','\u{1F3E0}','\u{1F4BB}','\u{1F393}','\u2708\uFE0F','\u{1F697}','\u{1F4F1}','\u{1F48D}'];
+  const colors = [['green','\u{1F7E2} Green'],['blue','\u{1F535} Blue'],['amber','\u{1F7E1} Amber'],['purple','\u{1F7E3} Purple']];
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">${isEdit ? '\u270F\uFE0F Edit Goal' : '\u{1F3AF} Tambah Goal Baru'}</div>
+      <div class="modal-field"><label>Nama Goal</label><input type="text" id="goal-name" value="${isEdit ? goal.name : ''}" placeholder="e.g. Tabungan Laptop"></div>
+      <div class="modal-field"><label>Target Amount</label><input type="number" id="goal-target" value="${isEdit ? goal.target : ''}" placeholder="e.g. 10000"></div>
+      <div class="modal-field"><label>Current Amount</label><input type="number" id="goal-current" value="${isEdit ? goal.current : 0}" placeholder="0"></div>
+      <div class="modal-field"><label>Currency</label><select id="goal-currency"><option value="ntd"${isEdit && goal.currency === 'ntd' ? ' selected' : ''}>NTD (Taiwan Dollar)</option><option value="idr"${isEdit && goal.currency === 'idr' ? ' selected' : ''}>IDR (Rupiah)</option></select></div>
+      <div class="modal-field"><label>Icon</label><select id="goal-icon">${icons.map(e => `<option value="${e}"${isEdit && goal.icon === e ? ' selected' : ''}>${e}</option>`).join('')}</select></div>
+      <div class="modal-field"><label>Color</label><select id="goal-color">${colors.map(([v, l]) => `<option value="${v}"${isEdit && goal.color === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div class="modal-btns">
+        <button class="modal-btn secondary" onclick="closeGoalModal()">Batal</button>
+        ${isEdit ? `<button class="modal-btn danger" onclick="deleteGoal('${goal.id}');closeGoalModal()">Hapus</button>` : ''}
+        <button class="modal-btn primary" onclick="saveGoalFromModal(${isEdit ? "'" + goal.id + "'" : 'null'})">${isEdit ? 'Simpan' : 'Tambah'}</button>
+      </div>
+    </div>`;
+  overlay.onclick = e => { if (e.target === overlay) closeGoalModal(); };
+  document.body.appendChild(overlay);
+}
+function showEditGoalModal(id) {
+  const data = loadSavingsData();
+  const goal = data.goals.find(g => g.id === id);
+  if (goal) showGoalModal(goal);
+}
+function closeGoalModal() { const m = document.getElementById('goal-modal'); if (m) m.remove(); }
+function saveGoalFromModal(editId) {
+  const name = document.getElementById('goal-name').value.trim();
+  const target = parseFloat(document.getElementById('goal-target').value) || 0;
+  const current = parseFloat(document.getElementById('goal-current').value) || 0;
+  const currency = document.getElementById('goal-currency').value;
+  const icon = document.getElementById('goal-icon').value;
+  const color = document.getElementById('goal-color').value;
+  if (!name || target <= 0) return alert('Isi nama dan target yang valid!');
+  const data = loadSavingsData();
+  if (editId) {
+    const idx = data.goals.findIndex(g => g.id === editId);
+    if (idx >= 0) data.goals[idx] = { ...data.goals[idx], name, target, current, currency, icon, color };
+  } else {
+    data.goals.push({ id: 'goal-' + Date.now(), name, target, current, currency, icon, color });
+  }
+  saveSavingsData(data); closeGoalModal(); renderSavingsPage();
+}
+function deleteGoal(id) {
+  if (!confirm('Hapus goal ini?')) return;
+  const data = loadSavingsData();
+  data.goals = data.goals.filter(g => g.id !== id);
+  saveSavingsData(data); renderSavingsPage();
+}
+
+// ── Investment Page ────────────────────────────────────────
+const SECTORS = [
+  { id: 'ai', emoji: '\u{1F916}', name: 'AI & Semiconductor', desc: 'Taiwan dominan (TSMC). AI infrastructure, data centers, chip manufacturing.', trend: 'hot', trendText: '\u{1F525} Very Hot' },
+  { id: 'energy', emoji: '\u26A1', name: 'Energy & Infra', desc: 'Demand tinggi dari AI data centers. Energi terbarukan & grid upgrade.', trend: 'hot', trendText: '\u{1F525} Hot' },
+  { id: 'health', emoji: '\u{1F3E5}', name: 'Healthcare & Biotech', desc: 'Digital health, aging population. Long-term steady growth.', trend: 'warm', trendText: '\u{1F4C8} Growing' },
+  { id: 'auto', emoji: '\u{1F3ED}', name: 'Industrial Auto', desc: 'Global automation trend. Smart manufacturing & robotics.', trend: 'warm', trendText: '\u{1F4C8} Growing' },
+];
+const TW_ETFS = [
+  { ticker: '0050', name: 'Taiwan Top 50 ETF', type: 'Market Cap \u2022 \u5143\u5927\u53F0\u706350', returnEst: '8-12%/thn', risk: 'med', riskLabel: 'Sedang', desc: 'Core holding. Top 50 perusahaan Taiwan.' },
+  { ticker: '0056', name: 'High Dividend ETF', type: 'Quarterly Div \u2022 \u5143\u5927\u9AD8\u80A1\u606F', returnEst: '5-7%/thn', risk: 'low', riskLabel: 'Rendah', desc: 'Stabil, dividen quarterly. Cocok cashflow pasif.' },
+  { ticker: '00878', name: 'ESG High Dividend', type: 'Quarterly Div \u2022 \u570B\u6CF0\u6C38\u7E8C\u9AD8\u80A1\u606F', returnEst: '4-6%/thn', risk: 'low', riskLabel: 'Rendah', desc: 'ESG focus, stabil. Volatilitas rendah.' },
+  { ticker: '00929', name: 'Tech Monthly Div', type: 'Monthly Div \u2022 \u5FA9\u83EF\u53F0\u7063\u79D1\u6280\u512A\u606F', returnEst: '6-10%/thn', risk: 'med', riskLabel: 'Sedang', desc: 'Monthly dividend! 100% tech/semiconductor.' },
+];
+const ID_FUNDS = [
+  { ticker: 'RDPU', name: 'Reksadana Pasar Uang', type: 'Money Market Fund', returnEst: '3-5%/thn', risk: 'low', riskLabel: 'Rendah', desc: 'Paling aman. Dana darurat + sedikit return.' },
+  { ticker: 'IDX30', name: 'Reksadana Indeks', type: 'Index Fund (IDX30/LQ45)', returnEst: '8-15%/thn', risk: 'med', riskLabel: 'Sedang', desc: 'Ikut 30 saham terbesar Indonesia. Fee rendah.' },
+  { ticker: 'EQUITY', name: 'Reksadana Saham', type: 'Equity Fund', returnEst: '10-20%/thn', risk: 'high', riskLabel: 'Tinggi', desc: 'Potensi tertinggi, hold 5+ tahun.' },
+];
+
+let portfolioChartInstance = null;
+let simChartInstance = null;
+
+function renderInvestPage() {
+  const surplusInvest = { ntd: MONTHLY_SURPLUS.ntd * 0.4, idr: MONTHLY_SURPLUS.idr * 0.4 };
+  const html = `
+    <div class="disclaimer">\u26A0\uFE0F <strong>Disclaimer:</strong> Semua informasi di halaman ini bersifat edukatif dan bukan saran investasi profesional. Investasi memiliki risiko. Lakukan riset mandiri sebelum berinvestasi.</div>
+
+    <div class="profile-card">
+      <div class="profile-label">Your Financial Profile</div>
+      <div class="profile-grid">
+        <div class="profile-stat"><div class="profile-stat-val" style="color:#4ADE80">${fmtNTD(MONTHLY_SURPLUS.ntd)}</div><div class="profile-stat-lbl">Surplus NTD/bln</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" style="color:#60A5FA">${fmtIDR(MONTHLY_SURPLUS.idr)}</div><div class="profile-stat-lbl">Surplus IDR/bln</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" style="color:#FBBF24">${fmtNTD(surplusInvest.ntd)}</div><div class="profile-stat-lbl">Investable/bln</div></div>
+      </div>
+      <div class="risk-badge-wrap"><span class="risk-badge conservative">\u{1F6E1}\uFE0F Conservative \u2014 Mahasiswa</span></div>
+    </div>
+
+    <div class="sector-title">\u{1F525} Sektor yang Sedang Bagus (2026)</div>
+    <div class="sector-grid">
+      ${SECTORS.map(s => `
+        <div class="sector-card ${s.id}">
+          <span class="sector-emoji">${s.emoji}</span>
+          <div class="sector-name">${s.name}</div>
+          <div class="sector-desc">${s.desc}</div>
+          <span class="sector-trend ${s.trend}">${s.trendText}</span>
+        </div>`).join('')}
+    </div>
+
+    <div class="rec-section">
+      <div class="rec-title">\u{1F1F9}\u{1F1FC} Rekomendasi ETF Taiwan (via Yuanta)</div>
+      <div class="rec-subtitle">Bisa beli via odd-lot trading atau \u5B9A\u671F\u5B9A\u984D (DCA) di Yuanta</div>
+      ${TW_ETFS.map(e => `
+        <div class="rec-card">
+          <div class="rec-ticker tw">${e.ticker}</div>
+          <div class="rec-info"><div class="rec-name">${e.name}</div><div class="rec-type">${e.type}</div></div>
+          <div class="rec-right"><div class="rec-return">~${e.returnEst}</div><span class="rec-risk ${e.risk}">${e.riskLabel}</span></div>
+        </div>`).join('')}
+    </div>
+
+    <div class="rec-section">
+      <div class="rec-title">\u{1F1EE}\u{1F1E9} Rekomendasi Reksadana Indonesia (via BLU BCA / Bibit)</div>
+      <div class="rec-subtitle">Min. investasi mulai Rp 10.000. Bebas pajak untuk reksadana.</div>
+      ${ID_FUNDS.map(e => `
+        <div class="rec-card">
+          <div class="rec-ticker id">${e.ticker}</div>
+          <div class="rec-info"><div class="rec-name">${e.name}</div><div class="rec-type">${e.type}</div></div>
+          <div class="rec-right"><div class="rec-return">~${e.returnEst}</div><span class="rec-risk ${e.risk}">${e.riskLabel}</span></div>
+        </div>`).join('')}
+    </div>
+
+    <div class="port-card">
+      <div class="port-title">\u{1F967} Rekomendasi Alokasi Portfolio (NTD)</div>
+      <div class="port-chart-wrap">
+        <div style="position:relative;max-width:160px;margin:0 auto"><canvas id="portfolio-chart" height="160"></canvas></div>
+        <div class="port-legend">
+          <div class="port-legend-item"><div class="port-legend-dot" style="background:#1E3A8A"></div>0050 (Market Cap)<span class="port-legend-pct">40%</span></div>
+          <div class="port-legend-item"><div class="port-legend-dot" style="background:#16A34A"></div>0056 (High Dividend)<span class="port-legend-pct">25%</span></div>
+          <div class="port-legend-item"><div class="port-legend-dot" style="background:#7C3AED"></div>00878 (ESG Dividend)<span class="port-legend-pct">20%</span></div>
+          <div class="port-legend-item"><div class="port-legend-dot" style="background:#D97706"></div>00929 (Tech Monthly)<span class="port-legend-pct">15%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sim-card">
+      <div class="sim-title">\u{1F9EE} Investment Simulator</div>
+      <div class="sim-subtitle">Lihat proyeksi pertumbuhan investasi dengan compound interest</div>
+      <div class="sim-controls">
+        <div class="sim-control"><label>Investasi per Bulan <span class="sim-val" id="sim-amount-val">${fmtNTD(surplusInvest.ntd)}</span></label><input type="range" class="sim-slider" id="sim-amount" min="500" max="10000" step="500" value="${surplusInvest.ntd}"></div>
+        <div class="sim-control"><label>Expected Return per Tahun <span class="sim-val" id="sim-return-val">8%</span></label><input type="range" class="sim-slider" id="sim-return" min="3" max="15" step="1" value="8"></div>
+        <div class="sim-control"><label>Durasi Investasi <span class="sim-val" id="sim-years-val">10 tahun</span></label><input type="range" class="sim-slider" id="sim-years" min="1" max="30" step="1" value="10"></div>
+      </div>
+      <div class="sim-results" id="sim-results"></div>
+      <canvas id="sim-chart" height="220"></canvas>
+    </div>
+  `;
+  document.getElementById('inv-content').innerHTML = html;
+  ['sim-amount','sim-return','sim-years'].forEach(id => { document.getElementById(id).oninput = updateSimulator; });
+  setTimeout(() => { drawPortfolioChart(); updateSimulator(); }, 100);
+}
+
+function drawPortfolioChart() {
+  const canvas = document.getElementById('portfolio-chart');
+  if (!canvas) return;
+  if (portfolioChartInstance) { portfolioChartInstance.destroy(); portfolioChartInstance = null; }
+  portfolioChartInstance = new Chart(canvas, {
+    type: 'doughnut',
+    data: { labels: ['0050','0056','00878','00929'], datasets: [{ data: [40, 25, 20, 15], backgroundColor: ['#1E3A8A','#16A34A','#7C3AED','#D97706'], borderWidth: 0, hoverOffset: 6 }] },
+    options: { cutout: '65%', animation: { duration: 800, easing: 'easeInOutQuart' }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: item => ` ${item.label}: ${item.raw}%` } } } },
+    plugins: [{
+      id: 'centerText',
+      afterDraw(chart) {
+        const { ctx: c, chartArea: { width, height, left, top } } = chart;
+        const cx = left + width/2, cy = top + height/2;
+        c.save(); c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.font = 'bold 14px -apple-system,sans-serif'; c.fillStyle = '#0F172A'; c.fillText('NTD', cx, cy - 6);
+        c.font = '10px -apple-system,sans-serif'; c.fillStyle = '#64748B'; c.fillText('Portfolio', cx, cy + 10);
+        c.restore();
+      }
+    }]
+  });
+}
+
+function updateSimulator() {
+  const amount = parseInt(document.getElementById('sim-amount').value);
+  const annualReturn = parseInt(document.getElementById('sim-return').value) / 100;
+  const years = parseInt(document.getElementById('sim-years').value);
+  document.getElementById('sim-amount-val').textContent = fmtNTD(amount);
+  document.getElementById('sim-return-val').textContent = Math.round(annualReturn * 100) + '%';
+  document.getElementById('sim-years-val').textContent = years + ' tahun';
+  const monthlyRate = annualReturn / 12;
+  const totalMonths = years * 12;
+  const milestones = [1, 3, 5, years].filter((v, i, a) => a.indexOf(v) === i && v <= years);
+  const resultsHTML = milestones.map(y => {
+    const m = y * 12;
+    const dep = amount * m;
+    const val = amount * ((Math.pow(1 + monthlyRate, m) - 1) / monthlyRate);
+    const g = val - dep;
+    return `<div class="sim-result"><div class="sim-result-val">${shortNTD(val)}</div><div class="sim-result-lbl">${y} Tahun</div><div class="sim-result-gain">+${shortNTD(g)}</div></div>`;
+  }).join('');
+  document.getElementById('sim-results').innerHTML = resultsHTML;
+
+  const dataDeposit = [], dataGrowth = [], labels = [];
+  for (let y = 0; y <= years; y++) {
+    labels.push(y === 0 ? 'Start' : y + 'Y');
+    const m = y * 12;
+    const dep = amount * m;
+    const val = m === 0 ? 0 : amount * ((Math.pow(1 + monthlyRate, m) - 1) / monthlyRate);
+    dataDeposit.push(dep); dataGrowth.push(val);
+  }
+  const canvas = document.getElementById('sim-chart');
+  if (!canvas) return;
+  if (simChartInstance) { simChartInstance.destroy(); simChartInstance = null; }
+  const ctx = canvas.getContext('2d');
+  const h = canvas.offsetHeight || 220;
+  const gradG = ctx.createLinearGradient(0, 0, 0, h); gradG.addColorStop(0, 'rgba(124,58,237,0.15)'); gradG.addColorStop(1, 'rgba(124,58,237,0.02)');
+  const gradD = ctx.createLinearGradient(0, 0, 0, h); gradD.addColorStop(0, 'rgba(148,163,184,0.12)'); gradD.addColorStop(1, 'rgba(148,163,184,0.02)');
+  simChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Nilai Investasi', data: dataGrowth, borderColor: '#7C3AED', backgroundColor: gradG, fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: '#7C3AED', borderWidth: 2.5 },
+        { label: 'Total Setoran', data: dataDeposit, borderColor: '#94A3B8', backgroundColor: gradD, fill: true, tension: 0, pointRadius: 2, pointBackgroundColor: '#94A3B8', borderWidth: 1.5, borderDash: [4, 3] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { font: { size: 11 }, padding: 16 } },
+        tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', titleFont: { size: 12, weight: '700' }, bodyFont: { size: 11 }, padding: 12, cornerRadius: 10, callbacks: { label: ctx => '  ' + ctx.dataset.label + ': ' + fmtNTD(ctx.raw) } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 }, callback: v => shortNTD(v) } }
+      },
+      animation: { duration: 600, easing: 'easeOutQuart' }
+    }
+  });
+}
+
 function startDashboard() {
+  initNavigation();
   updateClock();
   setInterval(updateClock, 1000);
   refreshRate();                                  // fetch kurs sekarang
