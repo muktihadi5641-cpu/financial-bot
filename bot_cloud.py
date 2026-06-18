@@ -908,6 +908,17 @@ class SyncHandler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
+    def end_headers(self):
+        # CORS — supaya dashboard di GitHub Pages bisa POST ke endpoint ini.
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.end_headers()
+
     def send_json(self, code: int, data):
         body = json.dumps(data).encode()
         self.send_response(code)
@@ -989,7 +1000,8 @@ class SyncHandler(BaseHTTPRequestHandler):
         self.send_json(404, {"error": "Not found"})
 
     def do_POST(self):
-        if urlparse(self.path).path == "/mark_synced":
+        path = urlparse(self.path).path
+        if path == "/mark_synced":
             if not self.check_auth():
                 self.send_json(401, {"error": "Unauthorized"})
                 return
@@ -998,6 +1010,36 @@ class SyncHandler(BaseHTTPRequestHandler):
             ids    = body.get("ids", [])
             db_mark_synced(ids)
             self.send_json(200, {"marked": len(ids)})
+            return
+        if path == "/add":
+            # Dipanggil dari chat UI di dashboard (PWA). Token wajib.
+            if not self.check_auth():
+                self.send_json(401, {"error": "Unauthorized — token salah"})
+                return
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body   = json.loads(self.rfile.read(length)) if length else {}
+            except Exception:
+                self.send_json(400, {"error": "Body bukan JSON valid"})
+                return
+            text = (body.get("text") or "").strip()
+            if not text:
+                self.send_json(400, {"error": "Field 'text' kosong"})
+                return
+            now      = datetime.now(WIB)
+            msg_date = now.strftime("%Y-%m-%d")
+            parsed   = parse_transaction_nl(text, msg_date, now)
+            if parsed is None:
+                self.send_json(422, {
+                    "ok": False,
+                    "error": "Tidak bisa parse — nominal tidak terdeteksi. Contoh: 'Beli kopi 50nt' atau 'Gaji masuk 5jt'."
+                })
+                return
+            db_insert(parsed["date"], parsed["type"], parsed["category"],
+                      parsed["amount"], parsed["currency"], parsed["description"])
+            # Sync ke Excel jalan di background — tidak blocking response.
+            threading.Thread(target=immediate_sync, daemon=True).start()
+            self.send_json(200, {"ok": True, "parsed": parsed})
             return
         self.send_json(404, {"error": "Not found"})
 

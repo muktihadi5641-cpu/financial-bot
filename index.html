@@ -1713,5 +1713,464 @@ function startDashboard() {
 
 startDashboard();
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     CHAT BOT — replaces Telegram. Talks to bot_cloud.py POST /add.
+     Mobile-first, iOS PWA-safe, brand-matched.
+═══════════════════════════════════════════════════════════════ -->
+<style>
+.chat-fab{
+  position:fixed;right:16px;bottom:calc(96px + env(safe-area-inset-bottom));
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(160deg,#0f2666 0%,#1a44c2 100%);
+  border:none;cursor:pointer;color:#fff;font-size:24px;
+  box-shadow:0 6px 18px rgba(15,38,102,.45);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;transition:transform .18s ease,box-shadow .18s ease;
+}
+.chat-fab:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(15,38,102,.55)}
+.chat-fab:active{transform:translateY(0) scale(.96)}
+.chat-fab:focus-visible{outline:3px solid #FCD34D;outline-offset:2px}
+
+.chat-backdrop{
+  position:fixed;inset:0;background:rgba(15,23,42,.55);
+  backdrop-filter:blur(2px);z-index:1001;
+  opacity:0;pointer-events:none;transition:opacity .22s ease;
+}
+.chat-backdrop.open{opacity:1;pointer-events:auto}
+
+.chat-sheet{
+  position:fixed;left:0;right:0;bottom:0;
+  background:var(--card);border-radius:20px 20px 0 0;
+  box-shadow:0 -8px 28px rgba(0,0,0,.18);
+  z-index:1002;
+  display:flex;flex-direction:column;
+  max-height:min(92vh, 760px);height:92vh;
+  transform:translateY(100%);transition:transform .26s cubic-bezier(.22,.78,.34,1);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.chat-sheet.open{transform:translateY(0)}
+@media(min-width:640px){
+  .chat-sheet{left:auto;right:16px;bottom:96px;width:400px;max-height:70vh;height:auto;border-radius:20px}
+  .chat-sheet.open{transform:translateY(0)}
+}
+
+.chat-head{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 16px;border-bottom:1px solid var(--border);
+  background:linear-gradient(160deg,#080f2e 0%,#0f2666 45%,#1a44c2 100%);
+  color:#fff;border-radius:20px 20px 0 0;
+  flex-shrink:0;
+}
+.chat-head .grab{
+  position:absolute;left:50%;top:6px;transform:translateX(-50%);
+  width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.3);
+}
+@media(min-width:640px){.chat-head .grab{display:none}}
+.chat-title{flex:1;font-weight:700;font-size:15px;letter-spacing:.2px}
+.chat-sub{font-size:11px;font-weight:500;opacity:.7;margin-top:1px}
+.chat-icon-btn{
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.15);
+  color:#fff;width:32px;height:32px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:14px;transition:background .15s;
+}
+.chat-icon-btn:hover{background:rgba(255,255,255,.18)}
+.chat-icon-btn:focus-visible{outline:2px solid #FCD34D;outline-offset:2px}
+.chat-icon-btn:active{transform:scale(.94)}
+
+.chat-msgs{
+  flex:1;overflow-y:auto;padding:16px;
+  display:flex;flex-direction:column;gap:10px;
+  background:#F8FAFC;
+  -webkit-overflow-scrolling:touch;
+}
+.msg{max-width:84%;padding:9px 13px;border-radius:16px;font-size:14px;line-height:1.4;word-wrap:break-word}
+.msg.user{align-self:flex-end;background:var(--primary2);color:#fff;border-bottom-right-radius:5px}
+.msg.bot{align-self:flex-start;background:#fff;color:var(--text);border:1px solid var(--border);border-bottom-left-radius:5px}
+.msg.err{align-self:flex-start;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;border-bottom-left-radius:5px}
+.msg.sys{align-self:center;background:transparent;color:var(--sub);font-size:12px;padding:4px 8px}
+
+.tx-card{
+  background:#fff;border:1px solid var(--border);border-radius:14px;
+  padding:11px 13px;align-self:flex-start;max-width:84%;
+  display:flex;flex-direction:column;gap:5px;
+}
+.tx-card-top{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--income);letter-spacing:.3px;text-transform:uppercase}
+.tx-card-top.expense{color:var(--expense)}
+.tx-card-top.savings{color:var(--savings)}
+.tx-card-top.invest{color:var(--invest)}
+.tx-card-amt{font-size:18px;font-weight:800;letter-spacing:-.3px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.tx-card-meta{font-size:12px;color:var(--sub);display:flex;gap:6px;flex-wrap:wrap}
+.tx-card-meta span{background:#F1F5F9;padding:2px 7px;border-radius:6px;font-weight:500}
+.tx-card-desc{font-size:12px;color:var(--text);font-style:italic;opacity:.85;margin-top:2px}
+
+.chat-hints{
+  display:flex;gap:6px;padding:8px 12px 4px;overflow-x:auto;
+  border-top:1px solid var(--border);background:var(--card);
+  flex-shrink:0;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.chat-hints::-webkit-scrollbar{display:none}
+.chat-hint{
+  background:#F1F5F9;border:1px solid var(--border);
+  border-radius:14px;padding:6px 11px;font-size:12px;color:var(--sub);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;
+  transition:background .15s,color .15s;
+}
+.chat-hint:hover{background:#E2E8F0;color:var(--text)}
+.chat-hint:active{transform:scale(.96)}
+
+.chat-input-row{
+  display:flex;gap:8px;padding:8px 12px 12px;
+  background:var(--card);
+  flex-shrink:0;
+}
+.chat-input{
+  flex:1;border:1px solid var(--border);background:#F8FAFC;
+  border-radius:18px;padding:10px 14px;font-size:14px;
+  font-family:inherit;color:var(--text);
+  resize:none;max-height:100px;min-height:40px;
+  transition:border-color .15s,background .15s;
+}
+.chat-input:focus{outline:none;border-color:var(--primary2);background:#fff}
+.chat-send{
+  width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;
+  background:var(--primary2);color:#fff;font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,transform .15s;flex-shrink:0;
+}
+.chat-send:hover:not(:disabled){background:var(--primary)}
+.chat-send:active:not(:disabled){transform:scale(.92)}
+.chat-send:focus-visible{outline:2px solid #FCD34D;outline-offset:2px}
+.chat-send:disabled{background:#CBD5E1;cursor:not-allowed}
+
+/* Settings overlay (first-time + gear) */
+.chat-settings{
+  position:absolute;inset:0;background:var(--card);
+  border-radius:20px 20px 0 0;
+  padding:18px 16px;display:none;flex-direction:column;gap:12px;
+  z-index:2;
+}
+.chat-settings.open{display:flex}
+.chat-settings h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px}
+.chat-settings p{font-size:12px;color:var(--sub);line-height:1.45}
+.cs-label{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.4px;text-transform:uppercase;margin-bottom:-6px;margin-top:6px}
+.cs-input{
+  border:1px solid var(--border);background:#F8FAFC;
+  border-radius:10px;padding:10px 12px;font-size:13px;
+  font-family:'SF Mono',Menlo,Consolas,monospace;color:var(--text);
+}
+.cs-input:focus{outline:none;border-color:var(--primary2);background:#fff}
+.cs-actions{display:flex;gap:8px;margin-top:auto;padding-top:12px}
+.cs-btn{
+  flex:1;padding:11px;border:none;border-radius:10px;cursor:pointer;
+  font-size:14px;font-weight:600;font-family:inherit;
+  transition:opacity .15s,transform .12s;
+}
+.cs-btn:active{transform:scale(.97)}
+.cs-btn.primary{background:var(--primary2);color:#fff}
+.cs-btn.primary:hover{opacity:.9}
+.cs-btn.ghost{background:#F1F5F9;color:var(--text)}
+.cs-btn.ghost:hover{background:#E2E8F0}
+
+.typing{display:inline-flex;gap:3px;padding:9px 13px;align-self:flex-start;background:#fff;border:1px solid var(--border);border-radius:16px;border-bottom-left-radius:5px}
+.typing span{width:6px;height:6px;border-radius:50%;background:#94A3B8;animation:typing 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+@keyframes typing{
+  0%,60%,100%{opacity:.3;transform:translateY(0)}
+  30%{opacity:1;transform:translateY(-3px)}
+}
+</style>
+
+<button class="chat-fab" id="chat-fab" aria-label="Buka chat bot" title="Chat bot — catat transaksi">💬</button>
+<div class="chat-backdrop" id="chat-backdrop"></div>
+<div class="chat-sheet" id="chat-sheet" role="dialog" aria-modal="true" aria-labelledby="chat-title">
+  <div class="chat-head">
+    <div class="grab"></div>
+    <div style="flex:1;min-width:0">
+      <div class="chat-title" id="chat-title">Tanya Bot</div>
+      <div class="chat-sub" id="chat-sub">Catat transaksi pakai bahasa biasa</div>
+    </div>
+    <button class="chat-icon-btn" id="chat-settings-btn" aria-label="Pengaturan" title="Pengaturan">⚙</button>
+    <button class="chat-icon-btn" id="chat-close-btn" aria-label="Tutup" title="Tutup">✕</button>
+  </div>
+
+  <div class="chat-msgs" id="chat-msgs" aria-live="polite"></div>
+
+  <div class="chat-hints" id="chat-hints">
+    <button class="chat-hint" data-text="Beli kopi 50nt">Beli kopi 50nt</button>
+    <button class="chat-hint" data-text="Makan siang 100nt">Makan siang 100nt</button>
+    <button class="chat-hint" data-text="Beasiswa masuk 10000nt">Beasiswa masuk 10000nt</button>
+    <button class="chat-hint" data-text="Belanja bulanan 150rb">Belanja 150rb</button>
+    <button class="chat-hint" data-text="Gaji 5jt">Gaji 5jt</button>
+  </div>
+
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chat-input" placeholder="Ketik transaksi… (mis. 'beli kopi 50nt')" rows="1"></textarea>
+    <button class="chat-send" id="chat-send" aria-label="Kirim" title="Kirim">➤</button>
+  </div>
+
+  <!-- Settings sub-panel (first time + gear) -->
+  <div class="chat-settings" id="chat-settings">
+    <h3>Setup Chat Bot</h3>
+    <p>Chat ini POST ke server <code>bot_cloud.py</code> (HF Spaces / laptop). Isi URL + Token sekali, tersimpan di browser ini.</p>
+    <div class="cs-label">Backend URL</div>
+    <input class="cs-input" id="cs-url" type="url" placeholder="https://username-financial-bot.hf.space" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="cs-label">Token (SYNC_SECRET dari .env)</div>
+    <input class="cs-input" id="cs-token" type="password" placeholder="••••••••••••" autocomplete="off">
+    <p style="font-size:11px;opacity:.7">Token disimpan di localStorage browser ini saja. Tidak dikirim ke server lain.</p>
+    <div class="cs-actions">
+      <button class="cs-btn ghost" id="cs-cancel">Batal</button>
+      <button class="cs-btn primary" id="cs-save">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const LS_URL = "chat.backendUrl";
+  const LS_TOK = "chat.token";
+  const LS_MSGS = "chat.history.v1";
+
+  const $ = (id) => document.getElementById(id);
+  const fab = $("chat-fab"), sheet = $("chat-sheet"), backdrop = $("chat-backdrop");
+  const msgsEl = $("chat-msgs"), input = $("chat-input"), sendBtn = $("chat-send");
+  const settings = $("chat-settings"), settingsBtn = $("chat-settings-btn"), closeBtn = $("chat-close-btn");
+  const csUrl = $("cs-url"), csTok = $("cs-token"), csSave = $("cs-save"), csCancel = $("cs-cancel");
+  const sub = $("chat-sub");
+
+  // Default backend URL: kalau dashboard buka dari localhost / IP LAN → bot di port 8080.
+  // Kalau dari GitHub Pages atau host lain → user wajib setup via gear.
+  function defaultBackend(){
+    const h = location.hostname;
+    if (h === "localhost" || h === "127.0.0.1") return "http://localhost:8080";
+    if (/^(192\.|10\.|172\.)/.test(h)) return `http://${h}:8080`;
+    return ""; // GitHub Pages → kosong, prompt user
+  }
+
+  function getCfg(){
+    return {
+      url: (localStorage.getItem(LS_URL) || defaultBackend()).replace(/\/+$/,""),
+      token: localStorage.getItem(LS_TOK) || ""
+    };
+  }
+  function saveCfg(url, token){
+    localStorage.setItem(LS_URL, url.replace(/\/+$/,""));
+    localStorage.setItem(LS_TOK, token);
+  }
+
+  // ── History (localStorage, max 50 messages) ─────────────────
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem(LS_MSGS) || "[]"); } catch(e){ history = []; }
+  function saveHistory(){
+    try { localStorage.setItem(LS_MSGS, JSON.stringify(history.slice(-50))); } catch(e){}
+  }
+
+  // ── Render ──────────────────────────────────────────────────
+  function fmtCurrency(amt, cur){
+    if (cur === "NTD") return "NT$ " + amt.toLocaleString("en-US",{maximumFractionDigits:2});
+    return "Rp " + amt.toLocaleString("id-ID",{maximumFractionDigits:2});
+  }
+  function fmtDate(yyyy_mm_dd){
+    const [y,m,d] = yyyy_mm_dd.split("-").map(Number);
+    const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+    return `${d} ${months[m-1]} ${y}`;
+  }
+
+  function renderUser(text){
+    const el = document.createElement("div");
+    el.className = "msg user";
+    el.textContent = text;
+    msgsEl.appendChild(el);
+    scrollDown();
+  }
+  function renderBot(text){
+    const el = document.createElement("div");
+    el.className = "msg bot";
+    el.textContent = text;
+    msgsEl.appendChild(el);
+    scrollDown();
+  }
+  function renderErr(text){
+    const el = document.createElement("div");
+    el.className = "msg err";
+    el.textContent = "⚠ " + text;
+    msgsEl.appendChild(el);
+    scrollDown();
+  }
+  function renderTx(parsed){
+    const typeClass = (TYPE_CLASS[parsed.type] || "expense");
+    const typeLabel = {income:"Income",expense:"Expense",invest:"Invest",savings:"Savings"}[typeClass];
+    const el = document.createElement("div");
+    el.className = "tx-card";
+    el.innerHTML = `
+      <div class="tx-card-top ${typeClass}">✓ Tercatat · ${typeLabel}</div>
+      <div class="tx-card-amt">${fmtCurrency(parsed.amount, parsed.currency)}</div>
+      <div class="tx-card-meta">
+        <span>${fmtDate(parsed.date)}</span>
+        <span>${parsed.category}</span>
+      </div>
+      <div class="tx-card-desc">"${parsed.description}"</div>
+    `;
+    msgsEl.appendChild(el);
+    scrollDown();
+  }
+  function showTyping(){
+    const el = document.createElement("div");
+    el.className = "typing";
+    el.id = "chat-typing";
+    el.innerHTML = "<span></span><span></span><span></span>";
+    msgsEl.appendChild(el);
+    scrollDown();
+  }
+  function hideTyping(){
+    const t = document.getElementById("chat-typing");
+    if (t) t.remove();
+  }
+  function scrollDown(){
+    requestAnimationFrame(() => { msgsEl.scrollTop = msgsEl.scrollHeight; });
+  }
+
+  function restoreHistory(){
+    msgsEl.innerHTML = "";
+    if (history.length === 0){
+      const el = document.createElement("div");
+      el.className = "msg sys";
+      el.textContent = "Mulai catat transaksi. Contoh: \"Beli kopi 50nt\" atau \"Gaji masuk 5jt\".";
+      msgsEl.appendChild(el);
+      return;
+    }
+    for (const h of history){
+      if (h.kind === "user") renderUser(h.text);
+      else if (h.kind === "tx") renderTx(h.parsed);
+      else if (h.kind === "err") renderErr(h.text);
+      else if (h.kind === "bot") renderBot(h.text);
+    }
+  }
+
+  // ── Send ────────────────────────────────────────────────────
+  async function send(){
+    const text = input.value.trim();
+    if (!text) return;
+    const cfg = getCfg();
+    if (!cfg.url || !cfg.token){
+      openSettings();
+      return;
+    }
+
+    input.value = "";
+    autoresize();
+    renderUser(text);
+    history.push({kind:"user", text}); saveHistory();
+    sendBtn.disabled = true;
+    showTyping();
+
+    try {
+      const res = await fetch(`${cfg.url}/add?token=${encodeURIComponent(cfg.token)}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({text})
+      });
+      hideTyping();
+
+      let data = null;
+      try { data = await res.json(); } catch(e) { data = null; }
+
+      if (res.ok && data && data.ok){
+        renderTx(data.parsed);
+        history.push({kind:"tx", parsed:data.parsed}); saveHistory();
+      } else if (res.status === 401){
+        renderErr("Token salah. Buka ⚙ untuk perbaiki.");
+        history.push({kind:"err", text:"Token salah"}); saveHistory();
+      } else if (res.status === 422 && data){
+        renderErr(data.error || "Tidak bisa parse.");
+        history.push({kind:"err", text:data.error || "Tidak bisa parse"}); saveHistory();
+      } else {
+        const msg = (data && data.error) || `HTTP ${res.status}`;
+        renderErr(msg);
+        history.push({kind:"err", text:msg}); saveHistory();
+      }
+    } catch(e){
+      hideTyping();
+      const msg = "Gagal connect ke backend (" + e.message + "). Cek URL di ⚙.";
+      renderErr(msg);
+      history.push({kind:"err", text:msg}); saveHistory();
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  // ── Open / close ────────────────────────────────────────────
+  function openChat(){
+    sheet.classList.add("open");
+    backdrop.classList.add("open");
+    restoreHistory();
+    updateSub();
+    setTimeout(() => input.focus(), 260);
+  }
+  function closeChat(){
+    sheet.classList.remove("open");
+    backdrop.classList.remove("open");
+    settings.classList.remove("open");
+  }
+  function openSettings(){
+    const cfg = getCfg();
+    csUrl.value = cfg.url;
+    csTok.value = cfg.token;
+    settings.classList.add("open");
+  }
+  function closeSettings(){ settings.classList.remove("open"); }
+
+  function updateSub(){
+    const cfg = getCfg();
+    if (!cfg.url) sub.textContent = "Belum di-setup — buka ⚙";
+    else if (!cfg.token) sub.textContent = "Token kosong — buka ⚙";
+    else {
+      try { sub.textContent = new URL(cfg.url).host; }
+      catch(e) { sub.textContent = cfg.url; }
+    }
+  }
+
+  function autoresize(){
+    input.style.height = "auto";
+    input.style.height = Math.min(100, input.scrollHeight) + "px";
+  }
+
+  // ── Wire up ─────────────────────────────────────────────────
+  fab.addEventListener("click", openChat);
+  backdrop.addEventListener("click", closeChat);
+  closeBtn.addEventListener("click", closeChat);
+  settingsBtn.addEventListener("click", openSettings);
+  csCancel.addEventListener("click", closeSettings);
+  csSave.addEventListener("click", () => {
+    const u = csUrl.value.trim(), t = csTok.value.trim();
+    if (!u || !t){ alert("URL dan Token wajib diisi."); return; }
+    saveCfg(u, t);
+    closeSettings();
+    updateSub();
+  });
+  sendBtn.addEventListener("click", send);
+  input.addEventListener("input", autoresize);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      send();
+    }
+  });
+  document.querySelectorAll(".chat-hint").forEach(b => {
+    b.addEventListener("click", () => {
+      input.value = b.dataset.text;
+      autoresize();
+      input.focus();
+    });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && sheet.classList.contains("open")) closeChat();
+  });
+})();
+</script>
 </body>
 </html>
